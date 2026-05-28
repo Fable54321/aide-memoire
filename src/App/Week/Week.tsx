@@ -108,15 +108,24 @@ const findClientForSupplier = (clients: Client[], supplier: Supplier) => {
 
 type Quotation = {
   id: string
-  savedQuotationId: number | null
+  savedQuotationId: string | null
   isSaving: boolean
   saveError: string | null
+  hasUnsavedChanges: boolean
   supplier: Supplier | null
   vegetable: Vegetable | null
   price: string
 }
 
 type QuotationsByDay = Record<string, Quotation[]>
+
+type SavedQuotation = {
+  id: string
+  client_id: string
+  vegetable_id: number
+  price: number | string
+  quotation_date: string
+}
 
 
 
@@ -132,7 +141,7 @@ type QuotationsByDay = Record<string, Quotation[]>
 const Week = () => {
   const [quotationsByDay, setQuotationsByDay] = useState<QuotationsByDay>({})
   const [dragOverDay, setDragOverDay] = useState<string | null>(null)
-  const { clients, postQuotation } = useSales()
+  const { clients, deleteQuotation, getQuotations, patchQuotation, postQuotation } = useSales()
   const { vegetables } = useVegetables()
 
   const [todayKey] = useState(() => formatQuotationDate(getDateOnly(new Date())))
@@ -165,13 +174,63 @@ const Week = () => {
   }, [todayKey, vegetables])
 
   useEffect(() => {
+    if (clients.length === 0 || vegetables.length === 0) {
+      return
+    }
+
+    const visibleDayKeys = new Set(visibleDays.map((day) => day.key))
+
+    getQuotations().then((savedQuotations: SavedQuotation[]) => {
+      const savedQuotationsByDay = savedQuotations.reduce<QuotationsByDay>(
+        (currentQuotationsByDay, savedQuotation) => {
+          const quotationDate = formatQuotationDate(parseSalesDate(savedQuotation.quotation_date) ?? new Date(savedQuotation.quotation_date))
+
+          if (!visibleDayKeys.has(quotationDate)) {
+            return currentQuotationsByDay
+          }
+
+          const client = clients.find((currentClient) => currentClient.id === savedQuotation.client_id)
+          const supplier = suppliers.find((currentSupplier) => currentSupplier.name === client?.name)
+          const vegetable = vegetables.find(
+            (currentVegetable) => currentVegetable.id === savedQuotation.vegetable_id,
+          )
+
+          if (!supplier || !vegetable) {
+            return currentQuotationsByDay
+          }
+
+          return {
+            ...currentQuotationsByDay,
+            [quotationDate]: [
+              ...(currentQuotationsByDay[quotationDate] ?? []),
+              {
+                id: `saved-${savedQuotation.id}`,
+                savedQuotationId: savedQuotation.id,
+                isSaving: false,
+                saveError: null,
+                hasUnsavedChanges: false,
+                price: String(savedQuotation.price),
+                supplier,
+                vegetable,
+              },
+            ],
+          }
+        },
+        {},
+      )
+
+      setQuotationsByDay(savedQuotationsByDay)
+    })
+  }, [clients, getQuotations, vegetables, visibleDays])
+
+  useEffect(() => {
     Object.entries(quotationsByDay).forEach(([quotationDate, quotations]) => {
       quotations.forEach((quotation) => {
         if (
           !quotation.supplier ||
           !quotation.vegetable ||
           quotation.price.trim() === "" ||
-          quotation.savedQuotationId !== null ||
+          (quotation.savedQuotationId !== null && !quotation.hasUnsavedChanges) ||
           quotation.isSaving ||
           quotation.saveError !== null ||
           clients.length === 0
@@ -208,7 +267,18 @@ const Week = () => {
           ),
         }))
 
-        postQuotation(client.id, quotation.vegetable.id, parsedPrice, quotationDate)
+        const saveRequest =
+          quotation.savedQuotationId === null
+            ? postQuotation(client.id, quotation.vegetable.id, parsedPrice, quotationDate)
+            : patchQuotation(
+                quotation.savedQuotationId,
+                client.id,
+                quotation.vegetable.id,
+                parsedPrice,
+                quotationDate,
+              )
+
+        saveRequest
           .then((savedQuotation) => {
             setQuotationsByDay((currentQuotationsByDay) => ({
               ...currentQuotationsByDay,
@@ -219,6 +289,7 @@ const Week = () => {
                       savedQuotationId: savedQuotation.id,
                       isSaving: false,
                       saveError: null,
+                      hasUnsavedChanges: false,
                     }
                   : currentQuotation,
               ),
@@ -236,7 +307,7 @@ const Week = () => {
           })
       })
     })
-  }, [clients, postQuotation, quotationsByDay])
+  }, [clients, patchQuotation, postQuotation, quotationsByDay])
 
   const handleLogoDragStart = (
     event: DragEvent<HTMLImageElement>,
@@ -283,6 +354,7 @@ const Week = () => {
           savedQuotationId: null,
           isSaving: false,
           saveError: null,
+          hasUnsavedChanges: true,
           price: "",
           supplier: supplier ?? null,
           vegetable: vegetable ?? null,
@@ -326,6 +398,7 @@ const Week = () => {
             quotation.id === quotationId
                 ? {
                     ...quotation,
+                    hasUnsavedChanges: true,
                     saveError: null,
                     supplier: supplier ?? quotation.supplier,
                     vegetable: vegetable ?? quotation.vegetable,
@@ -343,11 +416,34 @@ const Week = () => {
         Object.entries(currentQuotationsByDay).map(([day, quotations]) => [
           day,
           quotations.map((quotation) =>
-            quotation.id === quotationId ? { ...quotation, price, saveError: null } : quotation,
+            quotation.id === quotationId
+              ? { ...quotation, hasUnsavedChanges: true, price, saveError: null }
+              : quotation,
           ),
         ]),
       )
     })
+  }
+
+  const handleQuotationDelete = (quotationId: string) => {
+    const quotationToDelete = Object.values(quotationsByDay)
+      .flat()
+      .find((quotation) => quotation.id === quotationId)
+
+    setQuotationsByDay((currentQuotationsByDay) => {
+      return Object.fromEntries(
+        Object.entries(currentQuotationsByDay).map(([day, quotations]) => [
+          day,
+          quotations.filter((quotation) => quotation.id !== quotationId),
+        ]),
+      )
+    })
+
+    if (quotationToDelete?.savedQuotationId !== null && quotationToDelete?.savedQuotationId !== undefined) {
+      deleteQuotation(quotationToDelete.savedQuotationId).catch(() => {
+        console.error("Failed to delete quotation")
+      })
+    }
   }
 
   return (
@@ -413,6 +509,7 @@ const Week = () => {
                 key={day.key}
                 onQuotationDragOver={handleQuotationDragOver}
                 onQuotationDrop={handleQuotationDrop}
+                onQuotationDelete={handleQuotationDelete}
                 onQuotationPriceChange={handleQuotationPriceChange}
                 onDragEnter={setDragOverDay}
                 onDragLeave={() => setDragOverDay(null)}

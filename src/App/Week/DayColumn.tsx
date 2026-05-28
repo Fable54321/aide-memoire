@@ -20,9 +20,10 @@ type QuotationDay = {
 
 type Quotation = {
   id: string
-  savedQuotationId: number | null
+  savedQuotationId: string | null
   isSaving: boolean
   saveError: string | null
+  hasUnsavedChanges: boolean
   supplier: Supplier | null
   vegetable: Vegetable | null
   price: string
@@ -41,6 +42,7 @@ type DayColumnProps = {
   quotations: Quotation[]
   onQuotationDragOver: (event: DragEvent<HTMLElement>) => void
   onQuotationDrop: (event: DragEvent<HTMLElement>, quotationId: string) => void
+  onQuotationDelete: (quotationId: string) => void
   onQuotationPriceChange: (quotationId: string, price: string) => void
   onDragEnter: (dayKey: string) => void
   onDragLeave: () => void
@@ -74,6 +76,7 @@ const DayColumn = ({
   quotations,
   onQuotationDragOver,
   onQuotationDrop,
+  onQuotationDelete,
   onQuotationPriceChange,
   onDragEnter,
   onDragLeave,
@@ -100,6 +103,15 @@ const DayColumn = ({
             onDragOver={onQuotationDragOver}
             onDrop={(event) => onQuotationDrop(event, quotation.id)}
           >
+            <div className="flex items-center justify-end">
+              <button
+                className="rounded border border-red-200 px-2 py-1 text-xs font-semibold text-red-700 transition hover:bg-red-50"
+                onClick={() => onQuotationDelete(quotation.id)}
+                type="button"
+              >
+                Supprimer
+              </button>
+            </div>
             <div className="flex min-h-14 items-center gap-3 rounded border border-dashed border-secondary/50 bg-tertiary px-3">
               {quotation.supplier ? (
                 <>
