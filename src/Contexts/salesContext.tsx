@@ -3,14 +3,14 @@ import { createContext, useContext, useState, useEffect ,type ReactNode, useCall
 
 
 export type Client = {
-    id: number,
+    id: string,
     name: string,
 }
 
 
 type Quotation = {
     id: number,
-    client_id: number,
+    client_id: string,
     vegetable_id: number,
     price: number,
     quotation_date: string,
@@ -20,7 +20,7 @@ type SalesContextType = {
     clients: Client[],
     setClients: React.Dispatch<React.SetStateAction<Client[]>>,
     postQuotation: (
-        clientId: number,
+        clientId: string,
         vegetableId: number,
         price: number,
         date: string,
@@ -49,7 +49,7 @@ export const SalesProvider = ({children}: SalesProviderProps) => {
         console.log(clients)
     },[clients])
 
-    const postQuotation = useCallback((clientId: number, vegetableId: number, price: number, date: string) => {
+    const postQuotation = useCallback((clientId: string, vegetableId: number, price: number, date: string) => {
         return fetch("https://api.vegibec-portail.com/unprotected/quotations", {
             method: "POST",
             headers: {
