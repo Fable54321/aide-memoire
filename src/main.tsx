@@ -5,6 +5,7 @@ import './index.css'
 import App from '../src/App/App'
 import Week from './App/Week/Week'
 import { VegetablesProvider } from './Contexts/vegetablesContext'
+import { SalesProvider } from './Contexts/salesContext'
 
 
 const router = createBrowserRouter([
@@ -23,7 +24,9 @@ const router = createBrowserRouter([
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <VegetablesProvider>
-    <RouterProvider router={router} />
+      <SalesProvider>
+        <RouterProvider router={router} />
+    </SalesProvider>
     </VegetablesProvider>
   </StrictMode>,
 )

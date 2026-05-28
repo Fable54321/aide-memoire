@@ -215,7 +215,7 @@ const Week = () => {
           firstVegetable.vegetable.vegetable.localeCompare(secondVegetable.vegetable.vegetable),
         ),
     }
-  }, [vegetables])
+  }, [vegetables, today])
 
   const handleLogoDragStart = (
     event: DragEvent<HTMLImageElement>,
