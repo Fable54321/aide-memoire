@@ -1,10 +1,11 @@
-import { useMemo, useState, type DragEvent } from "react"
+import { useEffect, useMemo, useState, type DragEvent } from "react"
 
 import costco from "../../assets/images/costco-wholesale.svg"
 import dpro from "../../assets/images/DPro.png"
 import loblaws from "../../assets/images/loblaws.svg"
 import metro from "../../assets/images/metro-inc-logo.svg"
 import sobeys from "../../assets/images/sobeys-logo.svg"
+import { useSales, type Client } from "../../Contexts/salesContext"
 import { useVegetables, type Vegetable } from "../../Contexts/vegetablesContext"
 
 const suppliers = [
@@ -15,10 +16,13 @@ const suppliers = [
   { id: "metro", name: "Metro", logo: metro },
 ]
 
-const weekRows = [
-  ["Lundi", "Mardi", "Mercredi", "Jeudi"],
-  ["Vendredi", "Samedi", "Dimanche"],
-]
+type Supplier = (typeof suppliers)[number]
+
+type QuotationDay = {
+  key: string
+  label: string
+  shortDate: string
+}
 
 const getDateOnly = (date: Date) => {
   return new Date(date.getFullYear(), date.getMonth(), date.getDate())
@@ -62,10 +66,45 @@ const autoScrollPageWhileDragging = (clientY: number) => {
   }
 }
 
-type Supplier = (typeof suppliers)[number]
+const formatQuotationDate = (date: Date) => {
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, "0")
+  const day = String(date.getDate()).padStart(2, "0")
+
+  return `${year}-${month}-${day}`
+}
+
+const formatShortDate = (date: Date) => {
+  return `${String(date.getDate()).padStart(2, "0")}/${String(date.getMonth() + 1).padStart(2, "0")}`
+}
+
+const getRollingQuotationDays = (today: Date) => {
+  const dayNames = ["Dimanche", "Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi"]
+
+  return Array.from({ length: 7 }, (_, index): QuotationDay => {
+    const date = new Date(today)
+
+    date.setDate(today.getDate() - index)
+
+    return {
+      key: formatQuotationDate(date),
+      label: index === 0 ? "Aujourd'hui" : index === 1 ? "Hier" : dayNames[date.getDay()],
+      shortDate: formatShortDate(date),
+    }
+  })
+}
+
+const findClientForSupplier = (clients: Client[], supplier: Supplier) => {
+  const normalizedSupplierName = supplier.name.toLowerCase()
+
+  return clients.find((client) => client.name.toLowerCase() === normalizedSupplierName)
+}
 
 type Quotation = {
   id: string
+  savedQuotationId: number | null
+  isSaving: boolean
+  saveError: string | null
   supplier: Supplier | null
   vegetable: Vegetable | null
   price: string
@@ -83,7 +122,7 @@ type NewQuotationDropProps = {
 const NewQuotationDrop = ({ isDragOver }: NewQuotationDropProps) => {
   return (
     <div
-      className={`mx-3 mt-4 flex min-h-24 w-[calc(100%-1.5rem)] flex-col items-center justify-center gap-2 rounded border-2 border-dashed px-4 py-3 text-secondary shadow-sm transition ${
+      className={`mx-2 mt-3 flex min-h-20 w-[calc(100%-1rem)] flex-col items-center justify-center gap-2 rounded border-2 border-dashed px-3 py-3 text-secondary shadow-sm transition md:mx-3 md:mt-4 md:min-h-24 md:w-[calc(100%-1.5rem)] md:px-4 ${
         isDragOver
           ? "border-primary bg-primary/15 ring-2 ring-primary/35"
           : "border-secondary/70 bg-white/70"
@@ -99,16 +138,16 @@ const NewQuotationDrop = ({ isDragOver }: NewQuotationDropProps) => {
 }
 
 type DayColumnProps = {
-  day: string
+  day: QuotationDay
   isDragOver: boolean
   quotations: Quotation[]
   onQuotationDragOver: (event: DragEvent<HTMLElement>) => void
   onQuotationDrop: (event: DragEvent<HTMLElement>, quotationId: string) => void
   onQuotationPriceChange: (quotationId: string, price: string) => void
-  onDragEnter: (day: string) => void
+  onDragEnter: (dayKey: string) => void
   onDragLeave: () => void
   onDragOver: (event: DragEvent<HTMLDivElement>) => void
-  onDrop: (event: DragEvent<HTMLDivElement>, day: string) => void
+  onDrop: (event: DragEvent<HTMLDivElement>, dayKey: string) => void
 }
 
 const DayColumn = ({
@@ -125,19 +164,20 @@ const DayColumn = ({
 }: DayColumnProps) => {
   return (
     <div
-      className="min-h-150 flex-1 border-2 border-gray-500 bg-white/35"
-      onDragEnter={() => onDragEnter(day)}
+      className="min-h-96 w-full border-2 border-gray-500 bg-white/35 md:min-h-150 md:flex-1"
+      onDragEnter={() => onDragEnter(day.key)}
       onDragLeave={onDragLeave}
       onDragOver={onDragOver}
-      onDrop={(event) => onDrop(event, day)}
+      onDrop={(event) => onDrop(event, day.key)}
     >
-      <h3 className="border-b border-gray-300 bg-tertiary py-2 text-center text-[1.2em] font-semibold">
-        {day}
+      <h3 className="flex flex-col border-b border-gray-300 bg-tertiary py-2 text-center font-semibold">
+        <span className="text-[1.2em]">{day.label}</span>
+        <span className="text-sm text-gray-600">{day.shortDate}</span>
       </h3>
-      <div className="mx-3 mt-4 flex flex-col gap-3">
+      <div className="mx-2 mt-3 flex flex-col gap-3 md:mx-3 md:mt-4">
         {quotations.map((quotation) => (
           <article
-            className="flex flex-col gap-3 rounded border border-secondary/30 bg-white p-3 shadow-sm"
+            className="flex flex-col gap-3 rounded border border-secondary/30 bg-white p-2 shadow-sm md:p-3"
             key={quotation.id}
             onDragOver={onQuotationDragOver}
             onDrop={(event) => onQuotationDrop(event, quotation.id)}
@@ -169,7 +209,7 @@ const DayColumn = ({
               <label className="flex items-center rounded border border-gray-300 bg-white px-2">
                 <span className="text-sm font-bold text-secondary">$</span>
                 <input
-                  className="text-center text-[2em] min-w-0 flex-1 bg-transparent px-1 py-2 text-sm outline-none"
+                  className="min-w-0 flex-1 bg-transparent px-1 py-2 text-center text-2xl outline-none md:text-[2em]"
                   inputMode="decimal"
                   onChange={(event) => onQuotationPriceChange(quotation.id, event.target.value)}
                   placeholder="0.00"
@@ -189,9 +229,12 @@ const DayColumn = ({
 const Week = () => {
   const [quotationsByDay, setQuotationsByDay] = useState<QuotationsByDay>({})
   const [dragOverDay, setDragOverDay] = useState<string | null>(null)
+  const { clients, postQuotation } = useSales()
   const { vegetables } = useVegetables()
 
   const today = getDateOnly(new Date())
+  const visibleDays = getRollingQuotationDays(today)
+  const weekRows = [visibleDays.slice(0, 4), visibleDays.slice(4)]
 
   const groupedVegetables = useMemo(() => {
     const filteredVegetables = vegetables
@@ -213,9 +256,83 @@ const Week = () => {
         .filter(({ isCurrentlySold }) => !isCurrentlySold)
         .sort((firstVegetable, secondVegetable) =>
           firstVegetable.vegetable.vegetable.localeCompare(secondVegetable.vegetable.vegetable),
-        ),
+      ),
     }
   }, [vegetables, today])
+
+  useEffect(() => {
+    Object.entries(quotationsByDay).forEach(([quotationDate, quotations]) => {
+      quotations.forEach((quotation) => {
+        if (
+          !quotation.supplier ||
+          !quotation.vegetable ||
+          quotation.price.trim() === "" ||
+          quotation.savedQuotationId !== null ||
+          quotation.isSaving ||
+          quotation.saveError !== null ||
+          clients.length === 0
+        ) {
+          return
+        }
+
+        const parsedPrice = Number(quotation.price)
+
+        if (!Number.isFinite(parsedPrice)) {
+          return
+        }
+
+        const client = findClientForSupplier(clients, quotation.supplier)
+
+        if (!client) {
+          setQuotationsByDay((currentQuotationsByDay) => ({
+            ...currentQuotationsByDay,
+            [quotationDate]: (currentQuotationsByDay[quotationDate] ?? []).map((currentQuotation) =>
+              currentQuotation.id === quotation.id
+                ? { ...currentQuotation, saveError: "Client introuvable" }
+                : currentQuotation,
+            ),
+          }))
+          return
+        }
+
+        setQuotationsByDay((currentQuotationsByDay) => ({
+          ...currentQuotationsByDay,
+          [quotationDate]: (currentQuotationsByDay[quotationDate] ?? []).map((currentQuotation) =>
+            currentQuotation.id === quotation.id
+              ? { ...currentQuotation, isSaving: true, saveError: null }
+              : currentQuotation,
+          ),
+        }))
+
+        postQuotation(client.id, quotation.vegetable.id, parsedPrice, quotationDate)
+          .then((savedQuotation) => {
+            setQuotationsByDay((currentQuotationsByDay) => ({
+              ...currentQuotationsByDay,
+              [quotationDate]: (currentQuotationsByDay[quotationDate] ?? []).map((currentQuotation) =>
+                currentQuotation.id === quotation.id
+                  ? {
+                      ...currentQuotation,
+                      savedQuotationId: savedQuotation.id,
+                      isSaving: false,
+                      saveError: null,
+                    }
+                  : currentQuotation,
+              ),
+            }))
+          })
+          .catch(() => {
+            setQuotationsByDay((currentQuotationsByDay) => ({
+              ...currentQuotationsByDay,
+              [quotationDate]: (currentQuotationsByDay[quotationDate] ?? []).map((currentQuotation) =>
+                currentQuotation.id === quotation.id
+                  ? { ...currentQuotation, isSaving: false, saveError: "Erreur de sauvegarde" }
+                  : currentQuotation,
+              ),
+            }))
+          })
+      })
+    })
+  }, [clients, postQuotation, quotationsByDay])
 
   const handleLogoDragStart = (
     event: DragEvent<HTMLImageElement>,
@@ -239,7 +356,7 @@ const Week = () => {
     autoScrollPageWhileDragging(event.clientY)
   }
 
-  const handleDayDrop = (event: DragEvent<HTMLDivElement>, day: string) => {
+  const handleDayDrop = (event: DragEvent<HTMLDivElement>, dayKey: string) => {
     event.preventDefault()
 
     const supplierId = event.dataTransfer.getData("application/x-supplier-id")
@@ -255,10 +372,13 @@ const Week = () => {
 
     setQuotationsByDay((currentQuotationsByDay) => ({
       ...currentQuotationsByDay,
-      [day]: [
-        ...(currentQuotationsByDay[day] ?? []),
+      [dayKey]: [
+        ...(currentQuotationsByDay[dayKey] ?? []),
         {
-          id: `${supplier?.id ?? vegetable?.id}-${day}-${crypto.randomUUID()}`,
+          id: `${supplier?.id ?? vegetable?.id}-${dayKey}-${crypto.randomUUID()}`,
+          savedQuotationId: null,
+          isSaving: false,
+          saveError: null,
           price: "",
           supplier: supplier ?? null,
           vegetable: vegetable ?? null,
@@ -300,11 +420,12 @@ const Week = () => {
           day,
           quotations.map((quotation) =>
             quotation.id === quotationId
-              ? {
-                  ...quotation,
-                  supplier: supplier ?? quotation.supplier,
-                  vegetable: vegetable ?? quotation.vegetable,
-                }
+                ? {
+                    ...quotation,
+                    saveError: null,
+                    supplier: supplier ?? quotation.supplier,
+                    vegetable: vegetable ?? quotation.vegetable,
+                  }
               : quotation,
           ),
         ]),
@@ -318,7 +439,7 @@ const Week = () => {
         Object.entries(currentQuotationsByDay).map(([day, quotations]) => [
           day,
           quotations.map((quotation) =>
-            quotation.id === quotationId ? { ...quotation, price } : quotation,
+            quotation.id === quotationId ? { ...quotation, price, saveError: null } : quotation,
           ),
         ]),
       )
@@ -332,10 +453,10 @@ const Week = () => {
     >
       <h2 className="text-center text-[1.5rem]">Semaine actuelle</h2>
 
-      <div className="flex flex-wrap justify-center gap-4">
+      <div className="grid w-full grid-cols-2 gap-3 px-3 sm:grid-cols-3 md:flex md:flex-wrap md:justify-center md:gap-4 md:px-0">
         {suppliers.map((supplier) => (
           <img
-            className="h-20 w-40 cursor-grab rounded bg-white px-3 py-2 object-contain shadow-sm transition hover:-translate-y-0.5 hover:shadow-md active:cursor-grabbing"
+            className="h-16 w-full cursor-grab rounded bg-white px-3 py-2 object-contain shadow-sm transition hover:-translate-y-0.5 hover:shadow-md active:cursor-grabbing md:h-20 md:w-40"
             draggable
             key={supplier.id}
             onDragStart={(event) => handleLogoDragStart(event, supplier.id)}
@@ -345,24 +466,24 @@ const Week = () => {
           />
         ))}
       </div>
-      <div className="mt-5 flex w-[99%] flex-col gap-5">
-        <div className="flex flex-wrap justify-center gap-4">
+      <div className="mt-5 flex w-full flex-col gap-5 px-3 md:w-[99%] md:px-0">
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:flex md:flex-wrap md:justify-center md:gap-4">
           {groupedVegetables.currentlySoldVegetables.map(({ vegetable }) => (
             <article
-              className="min-w-44 cursor-grab rounded border-2 border-secondary bg-primary px-5 py-4 text-center text-white shadow-lg ring-2 ring-secondary/25 active:cursor-grabbing"
+              className="cursor-grab rounded border-2 border-secondary bg-primary px-3 py-3 text-center text-white shadow-lg ring-2 ring-secondary/25 active:cursor-grabbing md:min-w-44 md:px-5 md:py-4"
               draggable
               key={vegetable.id}
               onDragStart={(event) => handleVegetableDragStart(event, vegetable.id)}
               title={`Glisser ${vegetable.vegetable}`}
             >
-              <p className="text-lg font-bold">{vegetable.vegetable}</p>
+              <p className="text-sm font-bold md:text-lg">{vegetable.vegetable}</p>
               <p className="mt-1 text-xs font-semibold text-white/90">En vente</p>
             </article>
           ))}
         </div>
 
         <div className="border-t border-gray-300 pt-4">
-          <div className="grid grid-cols-4 gap-2">
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4">
             {groupedVegetables.otherVegetables.map(({ vegetable }) => (
               <p
                 className="cursor-grab rounded border border-gray-200 bg-white/60 px-3 py-2 text-sm text-gray-700 active:cursor-grabbing"
@@ -378,14 +499,14 @@ const Week = () => {
         </div>
       </div>
 
-      <div className="mt-4 flex w-[99%] flex-col justify-around">
+      <div className="mt-4 flex w-full flex-col justify-around gap-3 px-3 md:w-[99%] md:gap-0 md:px-0">
         {weekRows.map((days) => (
-          <div className="flex" key={days.join("-")}>
+          <div className="flex flex-col gap-3 md:flex-row md:gap-0" key={days.map((day) => day.key).join("-")}>
             {days.map((day) => (
               <DayColumn
                 day={day}
-                isDragOver={dragOverDay === day}
-                key={day}
+                isDragOver={dragOverDay === day.key}
+                key={day.key}
                 onQuotationDragOver={handleQuotationDragOver}
                 onQuotationDrop={handleQuotationDrop}
                 onQuotationPriceChange={handleQuotationPriceChange}
@@ -393,7 +514,7 @@ const Week = () => {
                 onDragLeave={() => setDragOverDay(null)}
                 onDragOver={handleDayDragOver}
                 onDrop={handleDayDrop}
-                quotations={quotationsByDay[day] ?? []}
+                quotations={quotationsByDay[day.key] ?? []}
               />
             ))}
           </div>
