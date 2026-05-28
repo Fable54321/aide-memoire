@@ -74,6 +74,12 @@ const formatQuotationDate = (date: Date) => {
   return `${year}-${month}-${day}`
 }
 
+const parseQuotationDate = (dateKey: string) => {
+  const [year, month, day] = dateKey.split("-").map(Number)
+
+  return new Date(year, month - 1, day)
+}
+
 const formatShortDate = (date: Date) => {
   return `${String(date.getDate()).padStart(2, "0")}/${String(date.getMonth() + 1).padStart(2, "0")}`
 }
@@ -129,11 +135,12 @@ const Week = () => {
   const { clients, postQuotation } = useSales()
   const { vegetables } = useVegetables()
 
-  const today = getDateOnly(new Date())
-  const visibleDays = getRollingQuotationDays(today)
+  const [todayKey] = useState(() => formatQuotationDate(getDateOnly(new Date())))
+  const visibleDays = getRollingQuotationDays(parseQuotationDate(todayKey))
   const weekRows = [visibleDays.slice(0, 4), visibleDays.slice(4)]
 
   const groupedVegetables = useMemo(() => {
+    const today = parseQuotationDate(todayKey)
     const filteredVegetables = vegetables
       .filter((vegetable) => vegetable.vegetable !== "AUCUNE" && vegetable.is_generic === false)
       .map((vegetable) => ({
@@ -155,7 +162,7 @@ const Week = () => {
           firstVegetable.vegetable.vegetable.localeCompare(secondVegetable.vegetable.vegetable),
       ),
     }
-  }, [vegetables, today])
+  }, [todayKey, vegetables])
 
   useEffect(() => {
     Object.entries(quotationsByDay).forEach(([quotationDate, quotations]) => {
