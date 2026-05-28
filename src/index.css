@@ -1,0 +1,317 @@
+@import "tailwindcss";
+
+
+:root {
+  --font-primary: 'Roboto Slab', serif;
+  --font-secondary: 'Open Sans', sans-serif;
+  --font-tertiary: 'Inter', sans-serif;
+}
+
+@theme {
+  --color-primary: #96c61c;
+  --color-secondary: #4b7312;
+  --color-tertiary: #F6F9F3;
+  --font-primary: var(--font-primary);
+  --font-secondary: var(--font-secondary);
+  --font-tertiary: var(--font-tertiary);
+  --breakpoint-tablet: 700px;
+  --breakpoint-max-tablet: 850px;
+}
+
+.custom-input {
+  outline-width: 2px;
+  outline-style: solid;
+  outline-color: var(--color-secondary);
+  border-radius: 0.125rem;
+  /* rounded-sm */
+}
+
+.custom-input:focus {
+  outline-width: 2px;
+  outline-color: var(--color-primary);
+}
+
+.filter-checkbox-input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  clip-path: inset(50%);
+}
+
+.filter-checkbox-visual {
+  position: relative;
+  display: grid;
+  width: 1.5rem;
+  height: 1.5rem;
+  flex: none;
+  place-items: center;
+  overflow: visible;
+  border: 2px solid var(--color-secondary);
+  border-radius: 0.25rem;
+  background-color: #fff;
+  box-shadow: 0 2px 5px hsl(0deg 0% 0% / 0.18);
+  transition:
+    background-color 180ms ease,
+    border-color 180ms ease,
+    box-shadow 180ms ease,
+    transform 180ms ease;
+}
+
+.filter-checkbox-visual::before {
+  position: absolute;
+  inset: -0.45rem;
+  border-radius: 999px;
+  content: "";
+  opacity: 0;
+  pointer-events: none;
+}
+
+.filter-checkbox-visual--checked {
+  border-color: var(--color-secondary);
+  background-color: var(--color-secondary);
+  box-shadow: 0 6px 14px hsl(85deg 73% 26% / 0.28);
+  animation: filter-checkbox-pop 340ms cubic-bezier(.2, 1.7, .45, 1);
+}
+
+.filter-checkbox-visual--checked::before {
+  border: 2px solid hsl(85deg 73% 44% / 0.5);
+  animation: filter-checkbox-ring 430ms ease-out;
+}
+
+.filter-checkbox-visual--unchecked {
+  animation: filter-checkbox-release 240ms ease-out;
+}
+
+.filter-checkbox-check {
+  width: 1.05rem;
+  height: 1.05rem;
+  overflow: visible;
+}
+
+.filter-checkbox-check path {
+  stroke: #fff;
+  stroke-width: 3;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-dasharray: 24;
+  stroke-dashoffset: 24;
+}
+
+.filter-checkbox-visual--checked .filter-checkbox-check path {
+  animation: filter-checkbox-draw 260ms 90ms ease-out forwards;
+}
+
+.filter-checkbox-visual--unchecked .filter-checkbox-check path {
+  animation: filter-checkbox-erase 180ms ease-in forwards;
+}
+
+.group:hover .filter-checkbox-visual {
+  transform: translateY(-1px);
+  box-shadow: 0 5px 12px hsl(0deg 0% 0% / 0.22);
+}
+
+.filter-checkbox-input:focus-visible + .filter-checkbox-visual {
+  outline: 3px solid hsl(85deg 73% 44% / 0.45);
+  outline-offset: 3px;
+}
+
+@keyframes filter-checkbox-pop {
+  0% {
+    transform: scale(0.82) rotate(-8deg);
+  }
+
+  58% {
+    transform: scale(1.18) rotate(4deg);
+  }
+
+  100% {
+    transform: scale(1) rotate(0deg);
+  }
+}
+
+@keyframes filter-checkbox-release {
+  0% {
+    transform: scale(1.08);
+  }
+
+  100% {
+    transform: scale(1);
+  }
+}
+
+@keyframes filter-checkbox-ring {
+  0% {
+    opacity: 0.8;
+    transform: scale(0.55);
+  }
+
+  100% {
+    opacity: 0;
+    transform: scale(1.45);
+  }
+}
+
+@keyframes filter-checkbox-draw {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes filter-checkbox-erase {
+  from {
+    stroke-dashoffset: 0;
+  }
+
+  to {
+    stroke-dashoffset: 24;
+  }
+}
+
+
+
+
+.button-generic {
+  background-color: #4b7312;
+
+  border-radius: 4px;
+  box-sizing: border-box;
+  color: #FFFFFF;
+  cursor: pointer;
+  direction: ltr;
+  font-family: 'Roboto Slab', sans-serif;
+
+  font-weight: bold;
+  letter-spacing: -.022em;
+  line-height: 1.47059;
+  box-shadow: -2px 4px 6px hsl(0deg 0% 0% / 0.2);
+  overflow: visible;
+  padding-inline: 0.5rem;
+  padding-block: 0.25rem;
+  text-align: center;
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: manipulation;
+
+}
+
+.button-generic-red {
+  background-color: hsl(0, 100%, 45%);
+
+  border-radius: 4px;
+  box-sizing: border-box;
+  color: #FFFFFF;
+  cursor: pointer;
+  direction: ltr;
+  font-family: "Roboto Slab", sans-serif;
+
+  font-weight: bold;
+  letter-spacing: -.022em;
+  line-height: 1.47059;
+  box-shadow: -2px 4px 6px hsl(0deg 0% 0% / 0.2);
+  overflow: visible;
+  padding-inline: 0.5rem;
+  padding-block: 0.25rem;
+  text-align: center;
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: manipulation;
+
+}
+
+.button-generic:disabled {
+  cursor: default;
+  opacity: .3;
+}
+
+.button-generic:hover {
+  background-color: hsl(85, 73%, 36%);
+  text-decoration: none;
+}
+
+.button-generic:active {
+  background-image: linear-gradient(hsl(85, 73%, 56%), hsl(85, 73%, 26%));
+  transform: scaleX(.98) scaleY(.98);
+  outline: none;
+}
+
+.button-generic:focus {
+
+  outline: none;
+}
+
+.button-generic-red:hover {
+  background-color: hsl(0, 100%, 55%);
+  text-decoration: none;
+}
+
+
+.button-generic-light {
+  background-color: #96c61c;
+
+  border-radius: 4px;
+  box-sizing: border-box;
+  color: #FFFFFF;
+  cursor: pointer;
+  direction: ltr;
+  font-family: 'Roboto Slab', sans-serif;
+
+  font-weight: bold;
+  letter-spacing: -.022em;
+  line-height: 1.47059;
+ 
+  overflow: visible;
+  padding-inline: 0.75rem;
+  padding-block: 0.55rem;
+  text-align: center;
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: manipulation;
+
+}
+
+
+.button-generic-light-red {
+  background-color: hsl(0, 100%, 45%);
+
+  border-radius: 4px;
+  box-sizing: border-box;
+  color: #FFFFFF;
+  cursor: pointer;
+  direction: ltr;
+  font-family: 'Roboto Slab', sans-serif;
+
+  font-weight: bold;
+  letter-spacing: -.022em;
+  line-height: 1.47059;
+ 
+  overflow: visible;
+  padding-inline: 0.75rem;
+  padding-block: 0.55rem;
+  text-align: center;
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: manipulation;
+
+}
+
+
+.text-stroke {
+  -webkit-text-stroke: 1px #4b7312;
+}
+
+
+/* 
+/* *   Kevin Powell
+*   https://youtu.be/cCAtD_BAHNw 
+*/
+
+
+html,
+body,
+#root {
+  min-height: 100vh;
+  background-color: #F6F9F3;
+}
