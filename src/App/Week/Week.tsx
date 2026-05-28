@@ -145,8 +145,8 @@ const Week = () => {
   const { vegetables } = useVegetables()
 
   const [todayKey] = useState(() => formatQuotationDate(getDateOnly(new Date())))
-  const visibleDays = getRollingQuotationDays(parseQuotationDate(todayKey))
-  const weekRows = [visibleDays.slice(0, 4), visibleDays.slice(4)]
+  const visibleDays = useMemo(() => getRollingQuotationDays(parseQuotationDate(todayKey)), [todayKey])
+  const weekRows = useMemo(() => [visibleDays.slice(0, 4), visibleDays.slice(4)], [visibleDays])
 
   const groupedVegetables = useMemo(() => {
     const today = parseQuotationDate(todayKey)
@@ -219,7 +219,26 @@ const Week = () => {
         {},
       )
 
-      setQuotationsByDay(savedQuotationsByDay)
+      setQuotationsByDay((currentQuotationsByDay) => {
+        const nextQuotationsByDay: QuotationsByDay = { ...currentQuotationsByDay }
+
+        Object.entries(savedQuotationsByDay).forEach(([quotationDate, savedQuotations]) => {
+          const currentQuotations = nextQuotationsByDay[quotationDate] ?? []
+
+          nextQuotationsByDay[quotationDate] = [
+            ...currentQuotations,
+            ...savedQuotations.filter(
+              (savedQuotation) =>
+                !currentQuotations.some(
+                  (currentQuotation) =>
+                    currentQuotation.savedQuotationId === savedQuotation.savedQuotationId,
+                ),
+            ),
+          ]
+        })
+
+        return nextQuotationsByDay
+      })
     })
   }, [clients, getQuotations, vegetables, visibleDays])
 

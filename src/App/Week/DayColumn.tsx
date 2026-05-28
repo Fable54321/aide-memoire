@@ -114,17 +114,17 @@ const DayColumn = ({
             </div>
             <div className="flex min-h-14 items-center gap-3 rounded border border-dashed border-secondary/50 bg-tertiary px-3">
               {quotation.supplier ? (
-                <>
+                <div className="flex items-center justify-around w-full">
                   <img
-                    className="h-10 w-20 object-contain"
+                    className="h-22.5 w-45 object-contain"
                     src={quotation.supplier.logo}
                     alt={quotation.supplier.name}
                   />
                   <div className="min-w-0">
-                    <p className="font-semibold text-secondary">{quotation.supplier.name}</p>
+                    <p className="font-semibold text-secondary text-[1.5rem]">{quotation.supplier.name}</p>
                     <p className="text-xs text-gray-500">Client</p>
                   </div>
-                </>
+                </div>
               ) : (
                 <div>
                   <p className="font-semibold text-secondary">Deposer un client</p>
