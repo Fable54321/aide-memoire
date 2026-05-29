@@ -1,0 +1,21 @@
+.today {
+    display: inline-block;
+    font-weight: bold;
+
+    color: white;
+   
+    font-size: 1.5rem;
+    animation: today-pulse 1.5s infinite ease-in-out;
+}
+
+@keyframes today-pulse {
+    0% {
+        transform: scale(1);
+    }
+    50% {
+        transform: scale(1.1);
+    }
+    100% {
+        transform: scale(1);
+    }
+}

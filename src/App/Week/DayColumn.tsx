@@ -1,6 +1,6 @@
 import {  type DragEvent } from "react"
 import { type Vegetable } from "../../Contexts/vegetablesContext"
-
+import "./DayColumn.css"
 
 
 
@@ -38,6 +38,7 @@ type NewQuotationDropProps = {
 
 type DayColumnProps = {
   day: QuotationDay
+  index: number
   isDragOver: boolean
   quotations: Quotation[]
   onQuotationDragOver: (event: DragEvent<HTMLElement>) => void
@@ -55,23 +56,25 @@ type DayColumnProps = {
 const NewQuotationDrop = ({ isDragOver }: NewQuotationDropProps) => {
   return (
     <div
-      className={`mx-2 mt-3 flex min-h-20 w-[calc(100%-1rem)] flex-col items-center justify-center gap-2 rounded border-2 border-dashed px-3 py-3 text-secondary shadow-sm transition md:mx-3 md:mt-4 md:min-h-24 md:w-[calc(100%-1.5rem)] md:px-4 ${
+      className={`mx-2 mt-3 flex min-h-20 w-[calc(100%-1rem)] flex-col items-center justify-center gap-1.5 rounded border-2 border-dashed px-3 py-3 text-secondary transition md:mx-3 md:mt-4 md:min-h-24 md:w-[calc(100%-1.5rem)] md:px-4 ${
         isDragOver
           ? "border-primary bg-primary/15 ring-2 ring-primary/35"
-          : "border-secondary/70 bg-white/70"
+          : "border-secondary/60 bg-white/40"
       }`}
     >
-      <span className="grid h-8 w-8 place-items-center rounded border border-secondary/40 bg-tertiary text-2xl leading-none shadow-inner">
-        +
+      <span className="text-center text-sm font-bold uppercase tracking-wide">
+        Zone de glisser-deposer
       </span>
-      <span className="text-center text-sm font-bold">Nouvelle quotation</span>
-      <span className="text-center text-xs text-gray-500">Glisser un logo ou un legume ici</span>
+      <span className="text-center text-xs text-gray-500">
+        Glisser un logo ou un legume ici
+      </span>
     </div>
   )
 }
 
 const DayColumn = ({
   day,
+  index,
   isDragOver,
   quotations,
   onQuotationDragOver,
@@ -85,15 +88,15 @@ const DayColumn = ({
 }: DayColumnProps) => {
   return (
     <div
-      className="min-h-96 w-full border-2 border-gray-500 bg-white/35 md:min-h-150 md:flex-1"
+      className={`min-h-96 w-full border-2 ${index < 3 ? "border-t-4": ""} ${index === 0 || index === 3 ? "border-l-4" : ""} ${index === 2 || index === 5 ? "border-r-4" : ""} pb-4  bg-white/35 md:min-h-150 md:flex-1`}
       onDragEnter={() => onDragEnter(day.key)}
       onDragLeave={onDragLeave}
       onDragOver={onDragOver}
       onDrop={(event) => onDrop(event, day.key)}
     >
-      <h3 className="flex flex-col border-b border-gray-300 bg-tertiary py-2 text-center font-semibold">
-        <span className="text-[1.2em]">{day.label}</span>
-        <span className="text-sm text-gray-600">{day.shortDate}</span>
+      <h3 className={`${index % 2 === 0 ? "bg-secondary" : "bg-primary"} flex flex-col border-b border-gray-300  py-2 text-center font-semibold`}>
+        <span className={`${day.label === "Aujourd'hui" ? "today" : ""} text-white text-[1.2em]`}>{day.label}</span>
+        <span className={` text-sm  text-white `}>{day.shortDate}</span>
       </h3>
       <div className="mx-2 mt-3 flex flex-col gap-3 md:mx-3 md:mt-4">
         {quotations.map((quotation) => (
@@ -146,6 +149,7 @@ const DayColumn = ({
                   type="text"
                   value={quotation.price}
                 />
+                <span className="text-sm font-bold text-secondary">/qté</span>
               </label>
             </div>
           </article>

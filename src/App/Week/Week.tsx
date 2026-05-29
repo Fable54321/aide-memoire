@@ -5,6 +5,9 @@ import dpro from "../../assets/images/DPro.png"
 import loblaws from "../../assets/images/loblaws.svg"
 import metro from "../../assets/images/metro-inc-logo.svg"
 import sobeys from "../../assets/images/sobeys-logo.svg"
+import maxland from "../../assets/images/MaxLand.png"
+import RoyalAlpha from "../../assets/images/Royal_Alpha.png"
+import westernHarvest from "../../assets/images/western_harvest.webp"
 import { useSales, type Client } from "../../Contexts/salesContext"
 import { useVegetables, type Vegetable } from "../../Contexts/vegetablesContext"
 
@@ -14,6 +17,9 @@ const suppliers = [
   { id: "loblaws", name: "Loblaws", logo: loblaws },
   { id: "dpro", name: "DPro", logo: dpro },
   { id: "metro", name: "Metro", logo: metro },
+  { id: "maxland", name: "Maxland", logo: maxland },
+  { id: "royalAlpha", name: "Royal Alpha", logo: RoyalAlpha },
+  { id: "westernHarvest", name: "Western Harvest", logo: westernHarvest },
 ]
 
 type Supplier = (typeof suppliers)[number]
@@ -31,6 +37,14 @@ const getDateOnly = (date: Date) => {
 const parseSalesDate = (date: string) => {
   if (!date) {
     return null
+  }
+
+  const dateOnlyMatch = date.match(/^(\d{4})-(\d{2})-(\d{2})/)
+
+  if (dateOnlyMatch) {
+    const [, year, month, day] = dateOnlyMatch
+
+    return new Date(Number(year), Number(month) - 1, Number(day))
   }
 
   const parsedDate = new Date(date)
@@ -87,14 +101,30 @@ const formatShortDate = (date: Date) => {
 const getRollingQuotationDays = (today: Date) => {
   const dayNames = ["Dimanche", "Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi"]
 
-  return Array.from({ length: 7 }, (_, index): QuotationDay => {
+  return Array.from({ length: 3 }, (_, index): QuotationDay => {
     const date = new Date(today)
 
-    date.setDate(today.getDate() - index)
+    date.setDate(today.getDate() + index)
 
     return {
       key: formatQuotationDate(date),
-      label: index === 0 ? "Aujourd'hui" : index === 1 ? "Hier" : dayNames[date.getDay()],
+      label: index === 0 ? "Aujourd'hui" : index === 1 ? "Demain" : dayNames[date.getDay()],
+      shortDate: formatShortDate(date),
+    }
+  }).reverse()
+}
+
+const getPastDays = (today: Date) => {
+  const dayNames = ["Dimanche", "Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi"]
+
+  return Array.from({ length: 3 }, (_, index): QuotationDay => {
+    const date = new Date(today)
+
+    date.setDate(today.getDate()-1 - index)
+
+    return {
+      key: formatQuotationDate(date),
+      label: index === 0 ? "Hier" : dayNames[date.getDay()],
       shortDate: formatShortDate(date),
     }
   })
@@ -146,7 +176,8 @@ const Week = () => {
 
   const [todayKey] = useState(() => formatQuotationDate(getDateOnly(new Date())))
   const visibleDays = useMemo(() => getRollingQuotationDays(parseQuotationDate(todayKey)), [todayKey])
-  const weekRows = useMemo(() => [visibleDays.slice(0, 4), visibleDays.slice(4)], [visibleDays])
+  const visiblePastDays = useMemo(() => getPastDays(parseQuotationDate(todayKey)), [todayKey])
+  const allDays = useMemo(() => [...visibleDays, ...visiblePastDays], [visibleDays, visiblePastDays])
 
   const groupedVegetables = useMemo(() => {
     const today = parseQuotationDate(todayKey)
@@ -179,13 +210,20 @@ const Week = () => {
     }
 
     const visibleDayKeys = new Set(visibleDays.map((day) => day.key))
+    const pastDayKeys = new Set(visiblePastDays.map((day) => day.key))
 
     getQuotations().then((savedQuotations: SavedQuotation[]) => {
       const savedQuotationsByDay = savedQuotations.reduce<QuotationsByDay>(
         (currentQuotationsByDay, savedQuotation) => {
-          const quotationDate = formatQuotationDate(parseSalesDate(savedQuotation.quotation_date) ?? new Date(savedQuotation.quotation_date))
+          const parsedQuotationDate = parseSalesDate(savedQuotation.quotation_date)
 
-          if (!visibleDayKeys.has(quotationDate)) {
+          if (!parsedQuotationDate) {
+            return currentQuotationsByDay
+          }
+
+          const quotationDate = formatQuotationDate(parsedQuotationDate)
+
+          if (!visibleDayKeys.has(quotationDate) && !pastDayKeys.has(quotationDate)) {
             return currentQuotationsByDay
           }
 
@@ -240,7 +278,7 @@ const Week = () => {
         return nextQuotationsByDay
       })
     })
-  }, [clients, getQuotations, vegetables, visibleDays])
+  }, [clients, getQuotations, vegetables, visibleDays, visiblePastDays])
 
   useEffect(() => {
     Object.entries(quotationsByDay).forEach(([quotationDate, quotations]) => {
@@ -302,15 +340,24 @@ const Week = () => {
             setQuotationsByDay((currentQuotationsByDay) => ({
               ...currentQuotationsByDay,
               [quotationDate]: (currentQuotationsByDay[quotationDate] ?? []).map((currentQuotation) =>
-                currentQuotation.id === quotation.id
-                  ? {
-                      ...currentQuotation,
-                      savedQuotationId: savedQuotation.id,
-                      isSaving: false,
-                      saveError: null,
-                      hasUnsavedChanges: false,
-                    }
-                  : currentQuotation,
+                {
+                  if (currentQuotation.id !== quotation.id) {
+                    return currentQuotation
+                  }
+
+                  const changedWhileSaving =
+                    currentQuotation.price !== quotation.price ||
+                    currentQuotation.supplier?.id !== quotation.supplier?.id ||
+                    currentQuotation.vegetable?.id !== quotation.vegetable?.id
+
+                  return {
+                    ...currentQuotation,
+                    savedQuotationId: savedQuotation.id,
+                    isSaving: false,
+                    saveError: null,
+                    hasUnsavedChanges: changedWhileSaving,
+                  }
+                },
               ),
             }))
           })
@@ -518,12 +565,13 @@ const Week = () => {
         </div>
       </div>
 
-      <div className="mt-4 flex w-full flex-col justify-around gap-3 px-3 md:w-[99%] md:gap-0 md:px-0">
-        {weekRows.map((days) => (
-          <div className="flex flex-col gap-3 md:flex-row md:gap-0" key={days.map((day) => day.key).join("-")}>
-            {days.map((day) => (
+      <div className="mt-4 flex w-full flex-col md:grid md:grid-cols-3 justify-around  gap-3 px-3 md:w-[99%] md:gap-0 md:px-0">
+        {allDays.map((day, index) => (
+          <div className="flex flex-col gap-3 md:flex-row md:gap-0" key={day.key}>
+            
               <DayColumn
                 day={day}
+                index={index}
                 isDragOver={dragOverDay === day.key}
                 key={day.key}
                 onQuotationDragOver={handleQuotationDragOver}
@@ -536,7 +584,7 @@ const Week = () => {
                 onDrop={handleDayDrop}
                 quotations={quotationsByDay[day.key] ?? []}
               />
-            ))}
+           
           </div>
         ))}
       </div>
