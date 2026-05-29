@@ -8,8 +8,10 @@ import sobeys from "../../assets/images/sobeys-logo.svg"
 import maxland from "../../assets/images/MaxLand.png"
 import RoyalAlpha from "../../assets/images/Royal_Alpha.png"
 import westernHarvest from "../../assets/images/western_harvest.webp"
+import burnacProduce from "../../assets/images/Burnac_Produce.png"
 import { useSales, type Client } from "../../Contexts/salesContext"
 import { useVegetables, type Vegetable } from "../../Contexts/vegetablesContext"
+
 
 const suppliers = [
   { id: "costco", name: "Costco", logo: costco },
@@ -20,6 +22,7 @@ const suppliers = [
   { id: "maxland", name: "Maxland", logo: maxland },
   { id: "royalAlpha", name: "Royal Alpha", logo: RoyalAlpha },
   { id: "westernHarvest", name: "Western Harvest", logo: westernHarvest },
+  { id : "burnacProduce", name: "Burnac Produce", logo: burnacProduce}
 ]
 
 type Supplier = (typeof suppliers)[number]
