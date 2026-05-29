@@ -136,7 +136,7 @@ const DayColumn = ({
               )}
             </div>
             <div className="flex flex-col gap-2">
-              <div className="flex min-h-11 items-center rounded border border-dashed border-secondary/50 bg-tertiary px-3 text-sm font-semibold text-secondary">
+              <div className="flex justify-center min-h-11 items-center rounded border border-dashed border-secondary/50 bg-tertiary px-3 text-center font-semibold text-secondary">
                 {quotation.vegetable?.vegetable ?? "Deposer un legume"}
               </div>
               <label className="flex items-center rounded border border-gray-300 bg-white px-2">

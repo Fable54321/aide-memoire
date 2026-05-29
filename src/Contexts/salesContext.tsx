@@ -70,13 +70,13 @@ export const SalesProvider = ({children}: SalesProviderProps) => {
         console.log(clients)
     },[clients])
 
-    const getQuotations = useCallback(() => {
-        return fetch("https://api.vegibec-portail.com/unprotected/quotations")
-        .then(res => parseJsonResponse<Quotation[]>(res))
+    const getQuotations = useCallback(async () => {
+        const res = await fetch("https://api.vegibec-portail.com/unprotected/quotations")
+        return await parseJsonResponse<Quotation[]>(res)
     },[])
 
-    const postQuotation = useCallback((clientId: string, vegetableId: number, price: number, date: string) => {
-        return fetch("https://api.vegibec-portail.com/unprotected/quotations", {
+    const postQuotation = useCallback(async (clientId: string, vegetableId: number, price: number, date: string) => {
+        const res = await fetch("https://api.vegibec-portail.com/unprotected/quotations", {
             method: "POST",
             headers: {
                 "Content-Type": "application/json"
@@ -87,11 +87,12 @@ export const SalesProvider = ({children}: SalesProviderProps) => {
                 price: price,
                 quotation_date: date
             })
-        }).then(res => parseJsonResponse<Quotation>(res))
+        })
+        return await parseJsonResponse<Quotation>(res)
     },[])
 
-    const patchQuotation = useCallback((quotationId: string, clientId: string, vegetableId: number, price: number, date: string) => {
-        return fetch(`https://api.vegibec-portail.com/unprotected/quotations/${encodeURIComponent(quotationId)}`, {
+    const patchQuotation = useCallback(async (quotationId: string, clientId: string, vegetableId: number, price: number, date: string) => {
+        const res = await fetch(`https://api.vegibec-portail.com/unprotected/quotations/${encodeURIComponent(quotationId)}`, {
             method: "PATCH",
             headers: {
                 "Content-Type": "application/json"
@@ -102,15 +103,16 @@ export const SalesProvider = ({children}: SalesProviderProps) => {
                 price: price,
                 quotation_date: date
             })
-        }).then(res => parseJsonResponse<Quotation>(res))
+        })
+        return await parseJsonResponse<Quotation>(res)
     },[])
 
-    const deleteQuotation = useCallback((quotationId: string) => {
-        return fetch(`https://api.vegibec-portail.com/unprotected/quotations/${encodeURIComponent(quotationId)}`, {
+    const deleteQuotation = useCallback(async (quotationId: string) => {
+        const res = await fetch(`https://api.vegibec-portail.com/unprotected/quotations/${encodeURIComponent(quotationId)}`, {
             method: "DELETE"
         })
-        .then(res => parseJsonResponse<{ deleted: Quotation }>(res))
-        .then(data => data.deleted)
+        const data = await parseJsonResponse<{ deleted: Quotation} >(res)
+        return data.deleted
     },[])
 
     return (
