@@ -124,13 +124,24 @@ const DayColumn = ({
               onDrop={(event) => onQuotationDrop(event, quotation.id)}
             >
               <div className="flex items-start justify-between gap-3">
-                <div className="min-w-0">
-                  <p className="truncate text-base font-bold text-secondary">
-                    {quotation.supplier?.name ?? "Client a choisir"}
-                  </p>
-                  <p className="mt-1 text-sm font-semibold text-gray-700">
-                    {quotation.vegetable?.vegetable ?? "Legume a choisir"}
-                  </p>
+                <div className="flex min-w-0 items-center gap-3">
+                  {quotation.supplier && (
+                    <div className="grid h-12 w-16 flex-none place-items-center rounded border border-gray-200 bg-white px-2 py-1">
+                      <img
+                        className="max-h-full max-w-full object-contain"
+                        src={quotation.supplier.logo}
+                        alt={quotation.supplier.name}
+                      />
+                    </div>
+                  )}
+                  <div className="min-w-0">
+                    <p className="truncate text-base font-bold text-secondary">
+                      {quotation.supplier?.name ?? "Client a choisir"}
+                    </p>
+                    <p className="mt-1 text-sm font-semibold text-gray-700">
+                      {quotation.vegetable?.vegetable ?? "Legume a choisir"}
+                    </p>
+                  </div>
                 </div>
                 <button
                   className="rounded border border-red-200 px-2 py-1 text-xs font-semibold text-red-700 transition hover:bg-red-50"
