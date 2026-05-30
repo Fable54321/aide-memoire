@@ -26,9 +26,6 @@ type Quotation = {
   createdAt: string | null
 }
 
-type NewQuotationDropProps = {
-  isDragOver: boolean
-}
 
 type DayColumnProps = {
   day: QuotationDay
@@ -62,29 +59,28 @@ const formatTime = (dateValue: string | null) => {
   })
 }
 
-const NewQuotationDrop = ({ isDragOver }: NewQuotationDropProps) => {
-  return (
-    <div
-      className={`mx-2 mt-3 flex min-h-20 w-[calc(100%-1rem)] flex-col items-center justify-center gap-1.5 rounded border-2 border-dashed px-3 py-3 text-secondary transition md:mx-3 md:mt-4 md:min-h-24 md:w-[calc(100%-1.5rem)] md:px-4 ${
-        isDragOver
-          ? "border-primary bg-primary/15 ring-2 ring-primary/35"
-          : "border-secondary/60 bg-white/40"
-      }`}
-    >
-      <span className="text-center text-sm font-bold uppercase tracking-wide">
-        Zone de glisser-deposer
-      </span>
-      <span className="text-center text-xs text-gray-500">
-        Optionnel: glisser un logo ou un legume ici
-      </span>
-    </div>
-  )
-}
+// const NewQuotationDrop = ({ isDragOver }: NewQuotationDropProps) => {
+//   return (
+//     <div
+//       className={`mx-2 mt-3 flex min-h-20 w-[calc(100%-1rem)] flex-col items-center justify-center gap-1.5 rounded border-2 border-dashed px-3 py-3 text-secondary transition md:mx-3 md:mt-4 md:min-h-24 md:w-[calc(100%-1.5rem)] md:px-4 ${
+//         isDragOver
+//           ? "border-primary bg-primary/15 ring-2 ring-primary/35"
+//           : "border-secondary/60 bg-white/40"
+//       }`}
+//     >
+//       <span className="text-center text-sm font-bold uppercase tracking-wide">
+//         Zone de glisser-deposer
+//       </span>
+//       <span className="text-center text-xs text-gray-500">
+//         Optionnel: glisser un logo ou un legume ici
+//       </span>
+//     </div>
+//   )
+// }
 
 const DayColumn = ({
   day,
   index,
-  isDragOver,
   quotations,
   onQuotationDragOver,
   onQuotationDrop,
@@ -176,7 +172,7 @@ const DayColumn = ({
         })}
       </div>
 
-      <NewQuotationDrop isDragOver={isDragOver} />
+     
     </div>
   )
 }
