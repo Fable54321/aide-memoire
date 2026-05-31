@@ -640,7 +640,7 @@ const Week = () => {
       <div className=" mt-5 grid w-full grid-cols-2 gap-3 px-3 sm:grid-cols-3 md:flex md:flex-wrap md:justify-center md:gap-4 md:px-0">
         {suppliers.map((supplier) => (
           <button
-            className={`pickable-choice h-16 w-full rounded bg-white px-3 py-2 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md md:h-20 md:w-40 ${
+            className={`pickable-choice h-16 w-full rounded bg-white px-3 py-2 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md hover:cursor-pointer md:h-20 md:w-40 ${
               !selectedSupplier ? "pickable-choice--prompt" : ""
             } ${
               selectedSupplier?.id === supplier.id ? "ring-4 ring-primary" : ""
@@ -663,7 +663,7 @@ const Week = () => {
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:flex md:flex-wrap md:justify-center md:gap-4">
           {groupedVegetables.currentlySoldVegetables.map(({ vegetable }) => (
             <button
-              className={`pickable-choice rounded border-2 border-secondary bg-primary px-3 py-3 text-center text-white shadow-lg ring-2 ring-secondary/25 md:min-w-44 md:px-5 md:py-4 ${
+              className={`pickable-choice rounded border-2 border-secondary bg-primary px-3 py-3 text-center text-white shadow-lg ring-2 hover:cursor-pointer ring-secondary/25 md:min-w-44 md:px-5 md:py-4 ${
                 !selectedVegetable ? "pickable-choice--prompt pickable-choice--produce" : ""
               } ${
                 selectedVegetable?.id === vegetable.id ? "outline-4 outline-offset-2 outline-secondary" : ""
@@ -684,7 +684,7 @@ const Week = () => {
             {groupedVegetables.otherVegetables
             .map(({ vegetable }) => (
               <button
-                className={`rounded border border-gray-200 bg-white/60 px-3 py-2 text-left text-xs text-gray-700 ${
+                className={`rounded border border-gray-200 bg-white/60 px-3 py-2 text-left text-xs text-gray-700 hover:cursor-pointer ${
                   selectedVegetable?.id === vegetable.id ? "ring-2 ring-secondary" : ""
                 }`}
                 key={vegetable.id}
