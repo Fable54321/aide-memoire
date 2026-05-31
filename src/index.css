@@ -302,6 +302,75 @@
   -webkit-text-stroke: 1px #4b7312;
 }
 
+.pickable-choice {
+  position: relative;
+}
+
+.pickable-choice--prompt {
+  animation: pickable-choice-breathe 2.6s ease-in-out infinite;
+}
+
+.pickable-choice--prompt::after {
+  position: absolute;
+  inset: -5px;
+  border: 2px solid hsl(85deg 73% 44% / 0.42);
+  border-radius: inherit;
+  content: "";
+  pointer-events: none;
+  animation: pickable-choice-ring 2.6s ease-out infinite;
+}
+
+.pickable-choice--produce::after {
+  border-color: hsl(85deg 73% 20% / 0.36);
+}
+
+.pickable-choice--prompt:hover,
+.pickable-choice--prompt:focus-visible {
+  animation-play-state: paused;
+}
+
+@keyframes pickable-choice-breathe {
+  0%,
+  100% {
+    box-shadow: 0 2px 6px hsl(0deg 0% 0% / 0.14);
+    transform: translateY(0);
+  }
+
+  45% {
+    box-shadow: 0 9px 18px hsl(85deg 73% 26% / 0.22);
+    transform: translateY(-2px);
+  }
+}
+
+@keyframes pickable-choice-ring {
+  0%,
+  56%,
+  100% {
+    opacity: 0;
+    transform: scale(0.98);
+  }
+
+  12% {
+    opacity: 1;
+  }
+
+  44% {
+    opacity: 0;
+    transform: scale(1.07);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pickable-choice--prompt,
+  .pickable-choice--prompt::after {
+    animation: none;
+  }
+
+  .pickable-choice--prompt::after {
+    opacity: 1;
+  }
+}
+
 
 /* 
 /* *   Kevin Powell

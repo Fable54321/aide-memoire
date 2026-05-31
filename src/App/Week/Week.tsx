@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type DragEvent, type FormEvent } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from "react"
 import DayColumn from "./DayColumn"
 import costco from "../../assets/images/costco-wholesale.svg"
 import dpro from "../../assets/images/DPro.png"
@@ -9,21 +9,47 @@ import maxland from "../../assets/images/MaxLand.png"
 import RoyalAlpha from "../../assets/images/Royal_Alpha.png"
 import westernHarvest from "../../assets/images/western_harvest.webp"
 import burnacProduce from "../../assets/images/Burnac_Produce.png"
+import royaltyProduce from "../../assets/images/Royalty_Produce.png"
 import thomas from "../../assets/images/thomas.png"
-import { useSales, type Client } from "../../Contexts/salesContext"
+import yvan from "../../assets/images/yvan_perreault.png"
+import jardinsCousineau from "../../assets/images/jardins_cousineau.png"
+import trisonFarms from "../../assets/images/trison_farms.png"
+import beauvais from "../../assets/images/beauvais.png"
+import eagle from "../../assets/images/eagle.png"
+import bono from "../../assets/images/bono.png"
+import michelriendeau from "../../assets/images/michelriendeau.webp"
+import global from "../../assets/images/global.png"
+import jardinsagripro from "../../assets/images/jardinsagripro.png"
+import fms from "../../assets/images/fms.svg"
+import samifruits from "../../assets/images/samifruits.png"
+import masetfils from "../../assets/images/masetfils.png"
+import { OfflineQueuedRequestError, useSales } from "../../Contexts/salesContext"
 import { useVegetables, type Vegetable } from "../../Contexts/vegetablesContext"
 
 const suppliers = [
-  { id: "costco", name: "Costco", logo: costco },
-  { id: "sobeys", name: "Sobeys", logo: sobeys },
-  { id: "loblaws", name: "Loblaws", logo: loblaws },
-  { id: "dpro", name: "DPro", logo: dpro },
-  { id: "metro", name: "Metro", logo: metro },
-  { id: "maxland", name: "Maxland", logo: maxland },
-  { id: "royalAlpha", name: "Royal Alpha", logo: RoyalAlpha },
-  { id: "westernHarvest", name: "Western Harvest", logo: westernHarvest },
-  { id: "burnacProduce", name: "Burnac Produce", logo: burnacProduce },
-  { id: "thomas", name: "Thomas Fruits et Legumes", logo: thomas },
+  { id: 2, name: "Costco", logo: costco },
+  { id: 5, name: "Sobeys", logo: sobeys },
+  { id: 6, name: "Loblaws", logo: loblaws },
+  { id: 3, name: "DPro", logo: dpro },
+  { id: 4, name: "Metro", logo: metro },
+  { id: 7, name: "Maxland", logo: maxland },
+  { id: 8, name: "Royal Alpha", logo: RoyalAlpha },
+  { id: 9, name: "Western Harvest", logo: westernHarvest },
+  { id: 10, name: "Burnac Produce", logo: burnacProduce },
+  { id: 11, name: "Thomas Fruits et Legumes", logo: thomas },
+  { id: 12, name: "Yvan Perreault et fils", logo: yvan },
+  { id: 13, name: "Trison Farms", logo: trisonFarms },
+  { id: 14, name: "Royalty Produce", logo: royaltyProduce },
+  { id: 15, name: "Jardins Cousineau", logo: jardinsCousineau },
+  { id: 16, name: "Beauvais ltée", logo: beauvais },
+  { id: 17, name: "Eagle", logo: eagle },
+  { id: 18, name: "Les fermes Michel Riendeau", logo: michelriendeau },
+  { id: 19, name: "Bono fruits et légumes", logo: bono },
+  { id: 20, name: "Global Produce", logo: global },
+  { id: 21, name: "Jardins AgriPro", logo: jardinsagripro },
+  { id: 22, name: "FMS", logo: fms },
+  { id: 23, name: "Samifruits", logo: samifruits },
+  { id: 24, name: "Mas et fils", logo: masetfils },
 ]
 
 type Supplier = (typeof suppliers)[number]
@@ -62,6 +88,8 @@ type DuplicateWarning = {
   supplier: Supplier
   vegetable: Vegetable
   quotation: Quotation
+  dayKey: string
+  dayLabel: string
 }
 
 type UndoAction =
@@ -100,19 +128,6 @@ const isDateBetween = (date: Date, startDate: string, endDate: string) => {
   }
 
   return date >= parsedStartDate && date <= parsedEndDate
-}
-
-const autoScrollPageWhileDragging = (clientY: number) => {
-  const scrollZone = 120
-  const scrollSpeed = 18
-
-  if (clientY < scrollZone) {
-    window.scrollBy({ top: -scrollSpeed })
-  }
-
-  if (clientY > window.innerHeight - scrollZone) {
-    window.scrollBy({ top: scrollSpeed })
-  }
 }
 
 const formatQuotationDate = (date: Date) => {
@@ -162,15 +177,9 @@ const getPastDays = (today: Date) => {
   })
 }
 
-const findClientForSupplier = (clients: Client[], supplier: Supplier) => {
-  const normalizedSupplierName = supplier.name.toLowerCase()
-  return clients.find((client) => client.name.toLowerCase() === normalizedSupplierName)
-}
-
 const Week = () => {
   const [quotationsByDay, setQuotationsByDay] = useState<QuotationsByDay>({})
   const [allSavedQuotations, setAllSavedQuotations] = useState<SavedQuotation[]>([])
-  const [dragOverDay, setDragOverDay] = useState<string | null>(null)
   const [selectedSupplier, setSelectedSupplier] = useState<Supplier | null>(null)
   const [selectedVegetable, setSelectedVegetable] = useState<Vegetable | null>(null)
   const [draftPrice, setDraftPrice] = useState("")
@@ -178,18 +187,25 @@ const Week = () => {
   const [saveNotice, setSaveNotice] = useState<string | null>(null)
   const [undoAction, setUndoAction] = useState<UndoAction | null>(null)
   const priceInputRef = useRef<HTMLInputElement>(null)
-  const { clients, deleteQuotation, getQuotations, patchQuotation, postQuotation } = useSales()
+  const { deleteQuotation, getQuotations, patchQuotation, postQuotation } = useSales()
   const { vegetables } = useVegetables()
 
   const [todayKey] = useState(() => formatQuotationDate(getDateOnly(new Date())))
   const visibleDays = useMemo(() => getRollingQuotationDays(parseQuotationDate(todayKey)), [todayKey])
   const visiblePastDays = useMemo(() => getPastDays(parseQuotationDate(todayKey)), [todayKey])
   const allDays = useMemo(() => [...visibleDays, ...visiblePastDays], [visibleDays, visiblePastDays])
+  const futureQuotationDays = useMemo(
+    () =>
+      visibleDays
+        .filter((day) => day.key !== todayKey)
+        .sort((firstDay, secondDay) => parseQuotationDate(firstDay.key).getTime() - parseQuotationDate(secondDay.key).getTime()),
+    [todayKey, visibleDays],
+  )
 
   const groupedVegetables = useMemo(() => {
     const today = parseQuotationDate(todayKey)
     const filteredVegetables = vegetables
-      .filter((vegetable) => vegetable.vegetable !== "AUCUNE" && vegetable.is_generic === false)
+      .filter((vegetable) => vegetable.vegetable !== "AUCUNE" && vegetable.is_generic === false && vegetable.vegetable !== "ENDIVES")
       .map((vegetable) => ({
         isCurrentlySold:
           isDateBetween(today, vegetable.sales_debut_1, vegetable.sales_end_1) ||
@@ -217,8 +233,8 @@ const Week = () => {
     }
   }, [selectedSupplier, selectedVegetable])
 
-  useEffect(() => {
-    if (clients.length === 0 || vegetables.length === 0) {
+  const loadSavedQuotations = useCallback(() => {
+    if (vegetables.length === 0) {
       return
     }
 
@@ -242,8 +258,9 @@ const Week = () => {
             return currentQuotationsByDay
           }
 
-          const client = clients.find((currentClient) => currentClient.id === savedQuotation.client_id)
-          const supplier = suppliers.find((currentSupplier) => currentSupplier.name === client?.name)
+          const supplier = suppliers.find(
+            (currentSupplier) => String(currentSupplier.id) === String(savedQuotation.client_id),
+          )
           const vegetable = vegetables.find(
             (currentVegetable) => currentVegetable.id === savedQuotation.vegetable_id,
           )
@@ -276,25 +293,39 @@ const Week = () => {
       setQuotationsByDay((currentQuotationsByDay) => {
         const nextQuotationsByDay: QuotationsByDay = { ...currentQuotationsByDay }
 
-        Object.entries(savedQuotationsByDay).forEach(([quotationDate, savedQuotations]) => {
+        allDays.forEach(({ key: quotationDate }) => {
+          const savedQuotations = savedQuotationsByDay[quotationDate] ?? []
           const currentQuotations = nextQuotationsByDay[quotationDate] ?? []
+          const unsavedLocalQuotations = currentQuotations.filter(
+            (currentQuotation) =>
+              currentQuotation.savedQuotationId === null &&
+              !savedQuotations.some(
+                (savedQuotation) =>
+                  savedQuotation.supplier?.id === currentQuotation.supplier?.id &&
+                  savedQuotation.vegetable?.id === currentQuotation.vegetable?.id &&
+                  savedQuotation.price === currentQuotation.price,
+              ),
+          )
 
-          nextQuotationsByDay[quotationDate] = [
-            ...currentQuotations,
-            ...savedQuotations.filter(
-              (savedQuotation) =>
-                !currentQuotations.some(
-                  (currentQuotation) =>
-                    currentQuotation.savedQuotationId === savedQuotation.savedQuotationId,
-                ),
-            ),
-          ]
+          nextQuotationsByDay[quotationDate] = [...unsavedLocalQuotations, ...savedQuotations]
         })
 
         return nextQuotationsByDay
       })
     })
-  }, [clients, getQuotations, vegetables, visibleDays, visiblePastDays])
+  }, [allDays, getQuotations, vegetables, visibleDays, visiblePastDays])
+
+  useEffect(() => {
+    loadSavedQuotations()
+  }, [loadSavedQuotations])
+
+  useEffect(() => {
+    window.addEventListener("sales-quotation-queue-synced", loadSavedQuotations)
+
+    return () => {
+      window.removeEventListener("sales-quotation-queue-synced", loadSavedQuotations)
+    }
+  }, [loadSavedQuotations])
 
   useEffect(() => {
     Object.entries(quotationsByDay).forEach(([quotationDate, quotations]) => {
@@ -305,8 +336,7 @@ const Week = () => {
           quotation.price.trim() === "" ||
           (quotation.savedQuotationId !== null && !quotation.hasUnsavedChanges) ||
           quotation.isSaving ||
-          quotation.saveError !== null ||
-          clients.length === 0
+          quotation.saveError !== null
         ) {
           return
         }
@@ -317,19 +347,7 @@ const Week = () => {
           return
         }
 
-        const client = findClientForSupplier(clients, quotation.supplier)
-
-        if (!client) {
-          setQuotationsByDay((currentQuotationsByDay) => ({
-            ...currentQuotationsByDay,
-            [quotationDate]: (currentQuotationsByDay[quotationDate] ?? []).map((currentQuotation) =>
-              currentQuotation.id === quotation.id
-                ? { ...currentQuotation, saveError: "Client introuvable" }
-                : currentQuotation,
-            ),
-          }))
-          return
-        }
+        const clientId = String(quotation.supplier.id)
 
         setQuotationsByDay((currentQuotationsByDay) => ({
           ...currentQuotationsByDay,
@@ -342,10 +360,10 @@ const Week = () => {
 
         const saveRequest =
           quotation.savedQuotationId === null
-            ? postQuotation(client.id, quotation.vegetable.id, parsedPrice, quotationDate)
+            ? postQuotation(clientId, quotation.vegetable.id, parsedPrice, quotationDate)
             : patchQuotation(
                 quotation.savedQuotationId,
-                client.id,
+                clientId,
                 quotation.vegetable.id,
                 parsedPrice,
                 quotationDate,
@@ -380,25 +398,37 @@ const Week = () => {
               }),
             }))
           })
-          .catch(() => {
+          .catch((error) => {
+            const saveError =
+              error instanceof OfflineQueuedRequestError ? "En attente de connexion" : "Erreur de sauvegarde"
+
             setQuotationsByDay((currentQuotationsByDay) => ({
               ...currentQuotationsByDay,
               [quotationDate]: (currentQuotationsByDay[quotationDate] ?? []).map((currentQuotation) =>
                 currentQuotation.id === quotation.id
-                  ? { ...currentQuotation, isSaving: false, saveError: "Erreur de sauvegarde" }
+                  ? {
+                      ...currentQuotation,
+                      savedQuotationId: error instanceof OfflineQueuedRequestError
+                        ? error.queuedQuotationId ?? currentQuotation.savedQuotationId
+                        : currentQuotation.savedQuotationId,
+                      isSaving: false,
+                      saveError,
+                      hasUnsavedChanges: false,
+                    }
                   : currentQuotation,
               ),
             }))
           })
       })
     })
-  }, [clients, patchQuotation, postQuotation, quotationsByDay])
+  }, [patchQuotation, postQuotation, quotationsByDay])
 
   const recentQuotations = useMemo(() => {
     return allSavedQuotations
       .map((quotation) => {
-        const client = clients.find((currentClient) => currentClient.id === quotation.client_id)
-        const supplier = suppliers.find((currentSupplier) => currentSupplier.name === client?.name)
+        const supplier = suppliers.find(
+          (currentSupplier) => String(currentSupplier.id) === String(quotation.client_id),
+        )
         const vegetable = vegetables.find((currentVegetable) => currentVegetable.id === quotation.vegetable_id)
         const parsedDate = parseSalesDate(quotation.quotation_date)
 
@@ -417,7 +447,7 @@ const Week = () => {
       })
       .filter((quotation) => quotation !== null)
       .sort((firstQuotation, secondQuotation) => secondQuotation.date.getTime() - firstQuotation.date.getTime())
-  }, [allSavedQuotations, clients, vegetables])
+  }, [allSavedQuotations, vegetables])
 
   const selectedClientHistory = useMemo(() => {
     if (!selectedSupplier) {
@@ -456,108 +486,6 @@ const Week = () => {
 
     const foundDay = allDays.find((day) => day.key === dateKey)
     return foundDay?.label.toLowerCase() ?? formatShortDate(parseQuotationDate(dateKey))
-  }
-
-  const handleLogoDragStart = (
-    event: DragEvent<HTMLImageElement>,
-    supplierId: Supplier["id"],
-  ) => {
-    event.dataTransfer.effectAllowed = "copy"
-    event.dataTransfer.setData("application/x-supplier-id", supplierId)
-  }
-
-  const handleVegetableDragStart = (
-    event: DragEvent<HTMLElement>,
-    vegetableId: Vegetable["id"],
-  ) => {
-    event.dataTransfer.effectAllowed = "copy"
-    event.dataTransfer.setData("application/x-vegetable-id", String(vegetableId))
-  }
-
-  const handleDayDragOver = (event: DragEvent<HTMLDivElement>) => {
-    event.preventDefault()
-    event.dataTransfer.dropEffect = "copy"
-    autoScrollPageWhileDragging(event.clientY)
-  }
-
-  const handleDayDrop = (event: DragEvent<HTMLDivElement>, dayKey: string) => {
-    event.preventDefault()
-
-    const supplierId = event.dataTransfer.getData("application/x-supplier-id")
-    const vegetableId = Number(event.dataTransfer.getData("application/x-vegetable-id"))
-    const supplier = suppliers.find((currentSupplier) => currentSupplier.id === supplierId)
-    const vegetable = vegetables.find((currentVegetable) => currentVegetable.id === vegetableId)
-
-    setDragOverDay(null)
-
-    if (!supplier && !vegetable) {
-      return
-    }
-
-    setQuotationsByDay((currentQuotationsByDay) => ({
-      ...currentQuotationsByDay,
-      [dayKey]: [
-        ...(currentQuotationsByDay[dayKey] ?? []),
-        {
-          id: `${supplier?.id ?? vegetable?.id}-${dayKey}-${crypto.randomUUID()}`,
-          savedQuotationId: null,
-          isSaving: false,
-          saveError: null,
-          hasUnsavedChanges: true,
-          price: "",
-          createdAt: null,
-          supplier: supplier ?? null,
-          vegetable: vegetable ?? null,
-        },
-      ],
-    }))
-  }
-
-  const handleQuotationDragOver = (event: DragEvent<HTMLElement>) => {
-    const hasQuotationPart =
-      event.dataTransfer.types.includes("application/x-supplier-id") ||
-      event.dataTransfer.types.includes("application/x-vegetable-id")
-
-    if (!hasQuotationPart) {
-      return
-    }
-
-    event.preventDefault()
-    event.dataTransfer.dropEffect = "copy"
-    autoScrollPageWhileDragging(event.clientY)
-  }
-
-  const handleQuotationDrop = (event: DragEvent<HTMLElement>, quotationId: string) => {
-    event.preventDefault()
-    event.stopPropagation()
-
-    const supplierId = event.dataTransfer.getData("application/x-supplier-id")
-    const vegetableId = Number(event.dataTransfer.getData("application/x-vegetable-id"))
-    const supplier = suppliers.find((currentSupplier) => currentSupplier.id === supplierId)
-    const vegetable = vegetables.find((currentVegetable) => currentVegetable.id === vegetableId)
-
-    if (!supplier && !vegetable) {
-      return
-    }
-
-    setQuotationsByDay((currentQuotationsByDay) => {
-      return Object.fromEntries(
-        Object.entries(currentQuotationsByDay).map(([day, quotations]) => [
-          day,
-          quotations.map((quotation) =>
-            quotation.id === quotationId
-              ? {
-                  ...quotation,
-                  hasUnsavedChanges: true,
-                  saveError: null,
-                  supplier: supplier ?? quotation.supplier,
-                  vegetable: vegetable ?? quotation.vegetable,
-                }
-              : quotation,
-          ),
-        ]),
-      )
-    })
   }
 
   const handleQuotationPriceChange = (quotationId: string, price: string) => {
@@ -602,7 +530,11 @@ const Week = () => {
     }
   }
 
-  const saveNewQuotation = (event?: FormEvent<HTMLFormElement>, replaceQuotation?: Quotation) => {
+  const saveNewQuotation = (
+    event?: FormEvent<HTMLFormElement>,
+    replaceQuotation?: Quotation,
+    dayKey = todayKey,
+  ) => {
     event?.preventDefault()
 
     if (!selectedSupplier || !selectedVegetable || draftPrice.trim() === "") {
@@ -611,17 +543,20 @@ const Week = () => {
 
     const existingQuotation =
       replaceQuotation ??
-      quotationsByDay[todayKey]?.find(
+      quotationsByDay[dayKey]?.find(
         (quotation) =>
           quotation.supplier?.id === selectedSupplier.id &&
           quotation.vegetable?.id === selectedVegetable.id,
       )
 
     if (existingQuotation && !replaceQuotation) {
+      const day = allDays.find((currentDay) => currentDay.key === dayKey)
       setDuplicateWarning({
         supplier: selectedSupplier,
         vegetable: selectedVegetable,
         quotation: existingQuotation,
+        dayKey,
+        dayLabel: day?.label.toLowerCase() ?? formatShortDate(parseQuotationDate(dayKey)),
       })
       return
     }
@@ -633,7 +568,7 @@ const Week = () => {
 
       setQuotationsByDay((currentQuotationsByDay) => ({
         ...currentQuotationsByDay,
-        [todayKey]: (currentQuotationsByDay[todayKey] ?? []).map((quotation) =>
+        [dayKey]: (currentQuotationsByDay[dayKey] ?? []).map((quotation) =>
           quotation.id === replaceQuotation.id
             ? {
                 ...quotation,
@@ -645,14 +580,14 @@ const Week = () => {
             : quotation,
         ),
       }))
-      setUndoAction({ type: "replace", dayKey: todayKey, previousQuotation })
+      setUndoAction({ type: "replace", dayKey, previousQuotation })
       setSaveNotice("Soumission remplacee.")
     } else {
-      const quotationId = `${selectedSupplier.id}-${selectedVegetable.id}-${todayKey}-${crypto.randomUUID()}`
+      const quotationId = `${selectedSupplier.id}-${selectedVegetable.id}-${dayKey}-${crypto.randomUUID()}`
 
       setQuotationsByDay((currentQuotationsByDay) => ({
         ...currentQuotationsByDay,
-        [todayKey]: [
+        [dayKey]: [
           {
             id: quotationId,
             savedQuotationId: null,
@@ -664,11 +599,11 @@ const Week = () => {
             price: draftPrice,
             createdAt,
           },
-          ...(currentQuotationsByDay[todayKey] ?? []),
+          ...(currentQuotationsByDay[dayKey] ?? []),
         ],
       }))
       setUndoAction({ type: "add", quotationId })
-      setSaveNotice("Soumission ajoutee.")
+      setSaveNotice(dayKey === todayKey ? "Soumission ajoutee." : "Soumission ajoutee pour une prochaine journee.")
     }
 
     setDraftPrice("")
@@ -699,16 +634,15 @@ const Week = () => {
   }
 
   return (
-    <section
-      className="flex w-full flex-col items-center"
-      onDragOver={(event) => autoScrollPageWhileDragging(event.clientY)}
-    >
-      <h2 className="text-center text-[1.5rem]">Semaine actuelle</h2>
+    <section className="flex w-full flex-col items-center">
+      
 
-      <div className="grid w-full grid-cols-2 gap-3 px-3 sm:grid-cols-3 md:flex md:flex-wrap md:justify-center md:gap-4 md:px-0">
+      <div className=" mt-5 grid w-full grid-cols-2 gap-3 px-3 sm:grid-cols-3 md:flex md:flex-wrap md:justify-center md:gap-4 md:px-0">
         {suppliers.map((supplier) => (
           <button
-            className={`h-16 w-full rounded bg-white px-3 py-2 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md md:h-20 md:w-40 ${
+            className={`pickable-choice h-16 w-full rounded bg-white px-3 py-2 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md md:h-20 md:w-40 ${
+              !selectedSupplier ? "pickable-choice--prompt" : ""
+            } ${
               selectedSupplier?.id === supplier.id ? "ring-4 ring-primary" : ""
             }`}
             key={supplier.id}
@@ -717,9 +651,7 @@ const Week = () => {
             type="button"
           >
             <img
-              className="h-full w-full cursor-grab object-contain active:cursor-grabbing"
-              draggable
-              onDragStart={(event) => handleLogoDragStart(event, supplier.id)}
+              className="h-full w-full object-contain"
               src={supplier.logo}
               alt={supplier.name}
             />
@@ -731,14 +663,14 @@ const Week = () => {
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:flex md:flex-wrap md:justify-center md:gap-4">
           {groupedVegetables.currentlySoldVegetables.map(({ vegetable }) => (
             <button
-              className={`rounded border-2 border-secondary bg-primary px-3 py-3 text-center text-white shadow-lg ring-2 ring-secondary/25 md:min-w-44 md:px-5 md:py-4 ${
+              className={`pickable-choice rounded border-2 border-secondary bg-primary px-3 py-3 text-center text-white shadow-lg ring-2 ring-secondary/25 md:min-w-44 md:px-5 md:py-4 ${
+                !selectedVegetable ? "pickable-choice--prompt pickable-choice--produce" : ""
+              } ${
                 selectedVegetable?.id === vegetable.id ? "outline-4 outline-offset-2 outline-secondary" : ""
               }`}
-              draggable
               key={vegetable.id}
               onClick={() => setSelectedVegetable(vegetable)}
-              onDragStart={(event) => handleVegetableDragStart(event, vegetable.id)}
-              title={`Glisser ${vegetable.vegetable}`}
+              title={vegetable.vegetable}
               type="button"
             >
               <p className="text-sm font-bold md:text-lg">{vegetable.vegetable}</p>
@@ -749,16 +681,15 @@ const Week = () => {
 
         <div className="border-t border-gray-300 pt-4">
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4">
-            {groupedVegetables.otherVegetables.map(({ vegetable }) => (
+            {groupedVegetables.otherVegetables
+            .map(({ vegetable }) => (
               <button
                 className={`rounded border border-gray-200 bg-white/60 px-3 py-2 text-left text-xs text-gray-700 ${
                   selectedVegetable?.id === vegetable.id ? "ring-2 ring-secondary" : ""
                 }`}
-                draggable
                 key={vegetable.id}
                 onClick={() => setSelectedVegetable(vegetable)}
-                onDragStart={(event) => handleVegetableDragStart(event, vegetable.id)}
-                title={`Glisser ${vegetable.vegetable}`}
+                title={vegetable.vegetable}
                 type="button"
               >
                 {vegetable.vegetable}
@@ -802,13 +733,28 @@ const Week = () => {
             value={draftPrice}
           />
         </label>
-        <button
-          className="button-generic-light h-14 disabled:opacity-40"
-          disabled={!selectedSupplier || !selectedVegetable || draftPrice.trim() === ""}
-          type="submit"
-        >
-          Ajouter
-        </button>
+        <div className="grid gap-2">
+          <button
+            className="button-generic-light h-14 disabled:opacity-40"
+            disabled={!selectedSupplier || !selectedVegetable || draftPrice.trim() === ""}
+            type="submit"
+          >
+            Ajouter aujourd'hui
+          </button>
+          <div className="grid grid-cols-2 gap-2">
+            {futureQuotationDays.map((day) => (
+              <button
+                className="rounded border border-secondary px-3 py-2 text-sm font-bold text-secondary transition hover:bg-tertiary disabled:opacity-40"
+                disabled={!selectedSupplier || !selectedVegetable || draftPrice.trim() === ""}
+                key={day.key}
+                onClick={() => saveNewQuotation(undefined, undefined, day.key)}
+                type="button"
+              >
+                {day.label}
+              </button>
+            ))}
+          </div>
+        </div>
 
         <div className="md:col-span-4">
           {recentPriceSuggestions.length > 0 && (
@@ -822,13 +768,15 @@ const Week = () => {
           {duplicateWarning && (
             <div className="mt-2 flex flex-col gap-2 rounded border border-amber-300 bg-amber-50 p-3 text-sm text-amber-950 md:flex-row md:items-center md:justify-between">
               <span>
-                {duplicateWarning.supplier.name} a deja {duplicateWarning.vegetable.vegetable} aujourd'hui a{" "}
+                {duplicateWarning.supplier.name} a deja {duplicateWarning.vegetable.vegetable} {duplicateWarning.dayLabel} a{" "}
                 <strong>{duplicateWarning.quotation.price}</strong>. Remplacer?
               </span>
               <div className="flex gap-2">
                 <button
                   className="button-generic-light"
-                  onClick={() => saveNewQuotation(undefined, duplicateWarning.quotation)}
+                  onClick={() =>
+                    saveNewQuotation(undefined, duplicateWarning.quotation, duplicateWarning.dayKey)
+                  }
                   type="button"
                 >
                   Remplacer
@@ -905,15 +853,8 @@ const Week = () => {
             <DayColumn
               day={day}
               index={index}
-              isDragOver={dragOverDay === day.key}
-              onQuotationDragOver={handleQuotationDragOver}
-              onQuotationDrop={handleQuotationDrop}
               onQuotationDelete={handleQuotationDelete}
               onQuotationPriceChange={handleQuotationPriceChange}
-              onDragEnter={setDragOverDay}
-              onDragLeave={() => setDragOverDay(null)}
-              onDragOver={handleDayDragOver}
-              onDrop={handleDayDrop}
               quotations={quotationsByDay[day.key] ?? []}
             />
           </div>
