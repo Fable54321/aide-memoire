@@ -201,13 +201,13 @@ const Week = () => {
   const [todayKey] = useState(() => formatQuotationDate(getDateOnly(new Date())))
   const visibleDays = useMemo(() => getRollingQuotationDays(parseQuotationDate(todayKey)), [todayKey])
   const [futureDaysShown, setFutureDaysShown] = useState(8)
-  const visibleFutureDays = useMemo(() => visibleDays.slice(0, futureDaysShown), [visibleDays, futureDaysShown])
+  const visibleFutureDays = useMemo(() => visibleDays.slice(visibleDays.length - futureDaysShown, visibleDays.length), [visibleDays, futureDaysShown])
   const visiblePastDays = useMemo(() => getPastDays(parseQuotationDate(todayKey)), [todayKey])
-  const allDays = useMemo(() => sortQuotationDaysByDate([...visibleDays, ...visiblePastDays]), [visibleDays, visiblePastDays])
+  const allDays = useMemo(() => sortQuotationDaysByDate([...visibleFutureDays, ...visiblePastDays]), [visibleFutureDays, visiblePastDays])
 
 
   useEffect(() => {
-    console.log(visibleFutureDays)
+    console.log("visible future days" ,visibleFutureDays)
   },[visibleFutureDays])
 
   const groupedVegetables = useMemo(() => {
