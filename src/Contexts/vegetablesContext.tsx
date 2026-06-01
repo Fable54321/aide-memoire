@@ -30,7 +30,7 @@ export const VegetablesProvider = ({children}: vegetablesProviderProps) => {
     const [vegetables, setVegetables] = useState<Vegetable[]>([])
 
     useEffect(() => {
-        fetch("https:/api.vegibec-portail.com/unprotected/vegetables")
+        fetch("https://api.vegibec-portail.com/unprotected/vegetables")
         .then(res => res.json())
         .then(data => setVegetables(data))
     }, [])
