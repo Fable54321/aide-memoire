@@ -155,6 +155,10 @@ const formatShortDate = (date: Date) => {
   return date.toLocaleDateString("fr-CA", { day: "numeric", month: "long" })
 }
 
+const formatCalendarMonth = (date: Date) => {
+  return date.toLocaleDateString("fr-CA", { month: "long", year: "numeric" })
+}
+
 const getRollingQuotationDays = (today: Date) => {
   const dayNames = ["Dimanche", "Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi"]
 
@@ -185,6 +189,47 @@ const getPastDays = (today: Date) => {
   })
 }
 
+const getQuotationDay = (dateKey: string, todayKey: string): QuotationDay => {
+  const dayNames = ["Dimanche", "Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi"]
+  const date = parseQuotationDate(dateKey)
+  const today = parseQuotationDate(todayKey)
+  const dayDifference = Math.round((getDateOnly(date).getTime() - getDateOnly(today).getTime()) / 86_400_000)
+
+  return {
+    key: dateKey,
+    label:
+      dayDifference === 0
+        ? "Aujourd'hui"
+        : dayDifference === 1
+          ? "Demain"
+          : dayDifference === -1
+            ? "Hier"
+            : dayNames[date.getDay()],
+    shortDate: formatShortDate(date),
+  }
+}
+
+const getMonthStart = (date: Date) => new Date(date.getFullYear(), date.getMonth(), 1)
+
+const addMonths = (date: Date, months: number) => {
+  const nextDate = new Date(date)
+  nextDate.setMonth(date.getMonth() + months, 1)
+  return getMonthStart(nextDate)
+}
+
+const getCalendarDays = (monthDate: Date) => {
+  const monthStart = getMonthStart(monthDate)
+  const firstCalendarDate = new Date(monthStart)
+  const mondayFirstOffset = (monthStart.getDay() + 6) % 7
+  firstCalendarDate.setDate(monthStart.getDate() - mondayFirstOffset)
+
+  return Array.from({ length: 42 }, (_, index) => {
+    const date = new Date(firstCalendarDate)
+    date.setDate(firstCalendarDate.getDate() + index)
+    return date
+  })
+}
+
 const Week = () => {
   const [quotationsByDay, setQuotationsByDay] = useState<QuotationsByDay>({})
   const [allSavedQuotations, setAllSavedQuotations] = useState<SavedQuotation[]>([])
@@ -194,21 +239,32 @@ const Week = () => {
   const [duplicateWarning, setDuplicateWarning] = useState<DuplicateWarning | null>(null)
   const [saveNotice, setSaveNotice] = useState<string | null>(null)
   const [undoAction, setUndoAction] = useState<UndoAction | null>(null)
+  const [isCalendarOpen, setIsCalendarOpen] = useState(false)
   const priceInputRef = useRef<HTMLInputElement>(null)
+  const calendarPickerRef = useRef<HTMLDivElement>(null)
   const { deleteQuotation, getQuotations, patchQuotation, postQuotation } = useSales()
   const { vegetables } = useVegetables()
 
   const [todayKey] = useState(() => formatQuotationDate(getDateOnly(new Date())))
+  const [selectedQuotationDate, setSelectedQuotationDate] = useState(todayKey)
+  const [calendarMonth, setCalendarMonth] = useState(() => getMonthStart(parseQuotationDate(todayKey)))
   const visibleDays = useMemo(() => getRollingQuotationDays(parseQuotationDate(todayKey)), [todayKey])
+  const quickQuotationDays = useMemo(() => sortQuotationDaysByDate(visibleDays).slice(0, 2), [visibleDays])
   const [futureDaysShown, setFutureDaysShown] = useState(8)
   const visibleFutureDays = useMemo(() => visibleDays.slice(visibleDays.length - futureDaysShown, visibleDays.length), [visibleDays, futureDaysShown])
   const visiblePastDays = useMemo(() => getPastDays(parseQuotationDate(todayKey)), [todayKey])
-  const allDays = useMemo(() => sortQuotationDaysByDate([...visibleFutureDays, ...visiblePastDays]), [visibleFutureDays, visiblePastDays])
+  const selectedQuotationDay = useMemo(
+    () => getQuotationDay(selectedQuotationDate || todayKey, todayKey),
+    [selectedQuotationDate, todayKey],
+  )
+  const allDays = useMemo(() => {
+    const daysByKey = new Map(
+      [...visibleFutureDays, ...visiblePastDays, selectedQuotationDay].map((day) => [day.key, day]),
+    )
 
-
-  useEffect(() => {
-    console.log("visible future days" ,visibleFutureDays)
-  },[visibleFutureDays])
+    return sortQuotationDaysByDate([...daysByKey.values()])
+  }, [selectedQuotationDay, visibleFutureDays, visiblePastDays])
+  const calendarDays = useMemo(() => getCalendarDays(calendarMonth), [calendarMonth])
 
   const groupedVegetables = useMemo(() => {
     const today = parseQuotationDate(todayKey)
@@ -241,13 +297,40 @@ const Week = () => {
     }
   }, [selectedSupplier, selectedVegetable])
 
+  useEffect(() => {
+    if (!isCalendarOpen) {
+      return
+    }
+
+    const handlePointerDown = (event: PointerEvent) => {
+      if (calendarPickerRef.current?.contains(event.target as Node)) {
+        return
+      }
+
+      setIsCalendarOpen(false)
+    }
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setIsCalendarOpen(false)
+      }
+    }
+
+    document.addEventListener("pointerdown", handlePointerDown)
+    document.addEventListener("keydown", handleKeyDown)
+
+    return () => {
+      document.removeEventListener("pointerdown", handlePointerDown)
+      document.removeEventListener("keydown", handleKeyDown)
+    }
+  }, [isCalendarOpen])
+
   const loadSavedQuotations = useCallback(() => {
     if (vegetables.length === 0) {
       return
     }
 
-    const visibleDayKeys = new Set(visibleDays.map((day) => day.key))
-    const pastDayKeys = new Set(visiblePastDays.map((day) => day.key))
+    const visibleDayKeys = new Set(allDays.map((day) => day.key))
 
     getQuotations().then((savedQuotations: SavedQuotation[]) => {
       setAllSavedQuotations(savedQuotations)
@@ -262,7 +345,7 @@ const Week = () => {
 
           const quotationDate = formatQuotationDate(parsedQuotationDate)
 
-          if (!visibleDayKeys.has(quotationDate) && !pastDayKeys.has(quotationDate)) {
+          if (!visibleDayKeys.has(quotationDate)) {
             return currentQuotationsByDay
           }
 
@@ -322,7 +405,7 @@ const Week = () => {
         return nextQuotationsByDay
       })
     })
-  }, [allDays, getQuotations, vegetables, visibleDays, visiblePastDays])
+  }, [allDays, getQuotations, vegetables])
 
   useEffect(() => {
     loadSavedQuotations()
@@ -552,7 +635,7 @@ const Week = () => {
   const saveNewQuotation = (
     event?: FormEvent<HTMLFormElement>,
     replaceQuotation?: Quotation,
-    dayKey = todayKey,
+    dayKey = selectedQuotationDate || todayKey,
   ) => {
     event?.preventDefault()
 
@@ -719,7 +802,7 @@ const Week = () => {
       </div>
 
       <form
-        className="mt-5 grid w-[calc(100%-1.5rem)] gap-3 rounded border-2 border-secondary bg-white p-4 shadow-md md:w-[min(980px,99%)] md:grid-cols-[1fr_1fr_150px_auto] md:items-end"
+        className="mt-5 grid w-[calc(100%-1.5rem)] gap-4 rounded border-2 border-secondary bg-white p-4 shadow-md md:w-[min(1080px,99%)] md:grid-cols-[1fr_1fr_150px_minmax(230px,280px)] md:items-start"
         onSubmit={saveNewQuotation}
       >
         <label className="flex flex-col gap-1 text-sm font-bold text-secondary">
@@ -752,29 +835,118 @@ const Week = () => {
             value={draftPrice}
           />
         </label>
-        <div className="grid gap-2">
+        <div className="grid gap-2 rounded border border-secondary/20 bg-tertiary p-3">
           <button
-            className="button-generic-light h-14 disabled:opacity-40"
+            className="button-generic-light min-h-14 disabled:opacity-40"
             disabled={!selectedSupplier || !selectedVegetable || draftPrice.trim() === ""}
             type="submit"
           >
-            Ajouter aujourd'hui
+            Ajouter
           </button>
           <div className="grid grid-cols-2 gap-2">
-            {visibleDays
-            .slice(0, 2)
+            {quickQuotationDays
             .map((day) => (
               <button
-                className="rounded border border-secondary px-3 py-2 text-sm font-bold text-secondary transition hover:bg-tertiary disabled:opacity-40"
+                className={`rounded border px-3 py-2 text-sm font-bold transition hover:bg-tertiary disabled:opacity-40 ${
+                  selectedQuotationDate === day.key
+                    ? "border-secondary bg-tertiary text-secondary"
+                    : "border-secondary text-secondary"
+                }`}
                 disabled={!selectedSupplier || !selectedVegetable || draftPrice.trim() === ""}
                 key={day.key}
-                onClick={() => saveNewQuotation(undefined, undefined, day.key)}
+                onClick={() => {
+                  setSelectedQuotationDate(day.key)
+                  setCalendarMonth(getMonthStart(parseQuotationDate(day.key)))
+                  setIsCalendarOpen(false)
+                  saveNewQuotation(undefined, undefined, day.key)
+                }}
                 type="button"
               >
                 {day.label}
               </button>
             ))}
           </div>
+          <div className="relative mt-1 border-t border-secondary/15 pt-2" ref={calendarPickerRef}>
+            <button
+              className="flex min-h-12 w-full hover:cursor-pointer items-center justify-between gap-3 rounded border border-secondary/30 bg-white px-3 py-2 text-left font-bold text-secondary shadow-sm transition hover:bg-tertiary"
+              onClick={() => {
+                setCalendarMonth(getMonthStart(parseQuotationDate(selectedQuotationDate || todayKey)))
+                setIsCalendarOpen((currentValue) => !currentValue)
+              }}
+              type="button"
+            >
+              <span className="text-sm">Autre date</span>
+              <span className="text-right text-xs font-black">
+                {selectedQuotationDay.label.toLowerCase()} {selectedQuotationDay.shortDate}
+              </span>
+            </button>
+
+            {isCalendarOpen && (
+              <div className="absolute right-0 top-full z-30 mt-2 w-[min(22rem,calc(100vw-3rem))] rounded border-2 border-secondary bg-white p-3 shadow-2xl">
+                <div className="flex items-center justify-between gap-2">
+                  <button
+                    className="h-11 w-11 hover:cursor-pointer rounded border border-secondary/30 bg-white text-lg font-black text-secondary transition hover:bg-tertiary disabled:opacity-30"
+                    disabled={formatQuotationDate(calendarMonth) <= formatQuotationDate(getMonthStart(parseQuotationDate(todayKey)))}
+                    onClick={() => setCalendarMonth((currentMonth) => addMonths(currentMonth, -1))}
+                    type="button"
+                  >
+                    {"<"}
+                  </button>
+                  <p className="text-center text-base font-black capitalize text-secondary">
+                    {formatCalendarMonth(calendarMonth)}
+                  </p>
+                  <button
+                    className="h-11 w-11 hover:cursor-pointer rounded border border-secondary/30 bg-white text-lg font-black text-secondary transition hover:bg-tertiary"
+                    onClick={() => setCalendarMonth((currentMonth) => addMonths(currentMonth, 1))}
+                    type="button"
+                  >
+                    {">"}
+                  </button>
+                </div>
+                <div className="mt-3 grid grid-cols-7 gap-1 text-center text-[0.7rem] font-black uppercase text-secondary/70">
+                  {["L", "M", "M", "J", "V", "S", "D"].map((dayName, index) => (
+                    <span key={`${dayName}-${index}`}>{dayName}</span>
+                  ))}
+                </div>
+                <div className="mt-1 grid grid-cols-7 gap-1">
+                  {calendarDays.map((date) => {
+                    const dateKey = formatQuotationDate(date)
+                    const isSelected = dateKey === selectedQuotationDate
+                    const isToday = dateKey === todayKey
+                    const isCurrentMonth = date.getMonth() === calendarMonth.getMonth()
+                    const isPast = dateKey < todayKey
+
+                    return (
+                      <button
+                        className={`min-h-11 rounded hover:cursor-pointer border text-base font-black transition disabled:cursor-default disabled:opacity-25 ${
+                          isSelected
+                            ? "border-secondary bg-secondary text-white shadow-sm"
+                            : isToday
+                              ? "border-primary bg-white text-secondary ring-2 ring-primary/40"
+                              : isCurrentMonth
+                                ? "border-secondary/20 bg-white text-secondary hover:bg-tertiary"
+                                : "border-gray-200 bg-white/50 text-gray-400 hover:bg-white"
+                        }`}
+                        disabled={isPast}
+                        key={dateKey}
+                        onClick={() => {
+                          setSelectedQuotationDate(dateKey)
+                          setDuplicateWarning(null)
+                          setIsCalendarOpen(false)
+                        }}
+                        type="button"
+                      >
+                        {date.getDate()}
+                      </button>
+                    )
+                  })}
+                </div>
+                <p className="mt-3 rounded bg-tertiary px-2 py-1.5 text-center text-xs font-bold text-secondary">
+                  Selection: {selectedQuotationDay.label.toLowerCase()} {selectedQuotationDay.shortDate}
+                </p>
+              </div>
+            )}
+            </div>
         </div>
 
         <div className="md:col-span-4">
