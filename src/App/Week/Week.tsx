@@ -23,6 +23,7 @@ import jardinsagripro from "../../assets/images/jardinsagripro.png"
 import fms from "../../assets/images/FMS.svg"
 import samifruits from "../../assets/images/samifruits.png"
 import masetfils from "../../assets/images/masetfils.png"
+import patterson from "../../assets/images/patterson_produce.jpg"
 import { OfflineQueuedRequestError, useSales } from "../../Contexts/salesContext"
 import { useVegetables, type Vegetable } from "../../Contexts/vegetablesContext"
 
@@ -50,6 +51,7 @@ const suppliers = [
   { id: 22, name: "FMS", logo: fms },
   { id: 23, name: "Samifruits", logo: samifruits },
   { id: 24, name: "Mas et fils", logo: masetfils },
+  { id: 25, name: "Patterson produce", logo: patterson },
 ]
 
 type Supplier = (typeof suppliers)[number]
@@ -156,7 +158,7 @@ const formatShortDate = (date: Date) => {
 const getRollingQuotationDays = (today: Date) => {
   const dayNames = ["Dimanche", "Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi"]
 
-  return Array.from({ length: 3 }, (_, index): QuotationDay => {
+  return Array.from({ length: 8 }, (_, index): QuotationDay => {
     const date = new Date(today)
     date.setDate(today.getDate() + index)
 
@@ -171,7 +173,7 @@ const getRollingQuotationDays = (today: Date) => {
 const getPastDays = (today: Date) => {
   const dayNames = ["Dimanche", "Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi"]
 
-  return Array.from({ length: 3 }, (_, index): QuotationDay => {
+  return Array.from({ length: 1 }, (_, index): QuotationDay => {
     const date = new Date(today)
     date.setDate(today.getDate() - 1 - index)
 
@@ -759,7 +761,9 @@ const Week = () => {
             Ajouter aujourd'hui
           </button>
           <div className="grid grid-cols-2 gap-2">
-            {futureQuotationDays.map((day) => (
+            {futureQuotationDays
+            .slice(0, 2)
+            .map((day) => (
               <button
                 className="rounded border border-secondary px-3 py-2 text-sm font-bold text-secondary transition hover:bg-tertiary disabled:opacity-40"
                 disabled={!selectedSupplier || !selectedVegetable || draftPrice.trim() === ""}
