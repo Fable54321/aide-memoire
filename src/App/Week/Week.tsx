@@ -100,6 +100,12 @@ type UndoAction =
 
 const getDateOnly = (date: Date) => new Date(date.getFullYear(), date.getMonth(), date.getDate())
 
+const addDays = (date: Date, days: number) => {
+  const nextDate = new Date(date)
+  nextDate.setDate(date.getDate() + days)
+  return nextDate
+}
+
 const parseSalesDate = (date: string) => {
   if (!date) {
     return null
@@ -246,8 +252,9 @@ const Week = () => {
   const { vegetables } = useVegetables()
 
   const [todayKey] = useState(() => formatQuotationDate(getDateOnly(new Date())))
-  const [selectedQuotationDate, setSelectedQuotationDate] = useState(todayKey)
-  const [calendarMonth, setCalendarMonth] = useState(() => getMonthStart(parseQuotationDate(todayKey)))
+  const [defaultQuotationDate] = useState(() => formatQuotationDate(addDays(getDateOnly(new Date()), 2)))
+  const [selectedQuotationDate, setSelectedQuotationDate] = useState(defaultQuotationDate)
+  const [calendarMonth, setCalendarMonth] = useState(() => getMonthStart(parseQuotationDate(defaultQuotationDate)))
   const visibleDays = useMemo(() => getRollingQuotationDays(parseQuotationDate(todayKey)), [todayKey])
   const quickQuotationDays = useMemo(() => sortQuotationDaysByDate(visibleDays).slice(0, 2), [visibleDays])
   const [futureDaysShown, setFutureDaysShown] = useState(8)
