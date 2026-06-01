@@ -152,7 +152,7 @@ const sortQuotationDaysByDate = (days: QuotationDay[]) => {
 }
 
 const formatShortDate = (date: Date) => {
-  return `${String(date.getDate()).padStart(2, "0")}/${String(date.getMonth() + 1).padStart(2, "0")}`
+  return date.toLocaleDateString("fr-CA", { day: "numeric", month: "long" })
 }
 
 const getRollingQuotationDays = (today: Date) => {
