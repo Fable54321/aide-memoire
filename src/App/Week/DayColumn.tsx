@@ -70,7 +70,7 @@ const DayColumn = ({
         } flex flex-col border-b border-gray-300 py-2 text-center font-semibold`}
       >
         <span className={`${day.label === "Aujourd'hui" ? "today" : ""} text-[1.2em] text-white`}>
-          {day.label}
+          {index === 0 || index === 1 ? day.label + " passé" :  day.label}
         </span>
         <span className="text-sm text-white">{day.shortDate}</span>
       </h3>
