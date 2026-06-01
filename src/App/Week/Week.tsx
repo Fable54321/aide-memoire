@@ -158,7 +158,7 @@ const formatShortDate = (date: Date) => {
 const getRollingQuotationDays = (today: Date) => {
   const dayNames = ["Dimanche", "Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi"]
 
-  return Array.from({ length: 8 }, (_, index): QuotationDay => {
+  return Array.from({ length: 32 }, (_, index): QuotationDay => {
     const date = new Date(today)
     date.setDate(today.getDate() + index)
 
@@ -200,15 +200,15 @@ const Week = () => {
 
   const [todayKey] = useState(() => formatQuotationDate(getDateOnly(new Date())))
   const visibleDays = useMemo(() => getRollingQuotationDays(parseQuotationDate(todayKey)), [todayKey])
+  const [futureDaysShown, setFutureDaysShown] = useState(8)
+  const visibleFutureDays = useMemo(() => visibleDays.slice(0, futureDaysShown), [visibleDays, futureDaysShown])
   const visiblePastDays = useMemo(() => getPastDays(parseQuotationDate(todayKey)), [todayKey])
   const allDays = useMemo(() => sortQuotationDaysByDate([...visibleDays, ...visiblePastDays]), [visibleDays, visiblePastDays])
-  const futureQuotationDays = useMemo(
-    () =>
-      visibleDays
-        .filter((day) => day.key !== todayKey)
-        .sort((firstDay, secondDay) => parseQuotationDate(firstDay.key).getTime() - parseQuotationDate(secondDay.key).getTime()),
-    [todayKey, visibleDays],
-  )
+
+
+  useEffect(() => {
+    console.log(visibleFutureDays)
+  },[visibleFutureDays])
 
   const groupedVegetables = useMemo(() => {
     const today = parseQuotationDate(todayKey)
@@ -761,7 +761,7 @@ const Week = () => {
             Ajouter aujourd'hui
           </button>
           <div className="grid grid-cols-2 gap-2">
-            {futureQuotationDays
+            {visibleDays
             .slice(0, 2)
             .map((day) => (
               <button
@@ -880,7 +880,15 @@ const Week = () => {
             />
           </div>
         ))}
+       
       </div>
+       <button
+          className="rounded border border-gray-300 px-3 py-2 font-semibold hover:cursor-pointer"
+          onClick={() => setFutureDaysShown((prev) => Math.min(prev + 8))}
+          type="button"
+        >
+          Voir plus
+        </button>
     </section>
   )
 }
