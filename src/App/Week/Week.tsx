@@ -270,7 +270,7 @@ const Week = () => {
   const outOfRangeQuotationDays = useMemo(() => {
     return sortQuotationDaysByDate(
       Object.entries(quotationsByDay)
-        .filter(([dayKey, quotations]) => !loadedDayKeys.has(dayKey) && quotations.length > 0)
+        .filter(([dayKey, quotations]) => dayKey >= todayKey && !loadedDayKeys.has(dayKey) && quotations.length > 0)
         .map(([dayKey]) => getQuotationDay(dayKey, todayKey)),
     )
   }, [loadedDayKeys, quotationsByDay, todayKey])
@@ -339,8 +339,6 @@ const Week = () => {
       return
     }
 
-    const visibleDayKeys = new Set(allDays.map((day) => day.key))
-
     getQuotations().then((savedQuotations: SavedQuotation[]) => {
       setAllSavedQuotations(savedQuotations)
 
@@ -354,7 +352,7 @@ const Week = () => {
 
           const quotationDate = formatQuotationDate(parsedQuotationDate)
 
-          if (!visibleDayKeys.has(quotationDate)) {
+          if (quotationDate < todayKey && !loadedDayKeys.has(quotationDate)) {
             return currentQuotationsByDay
           }
 
@@ -393,8 +391,10 @@ const Week = () => {
       setQuotationsByDay((currentQuotationsByDay) => {
         const nextQuotationsByDay: QuotationsByDay = { ...currentQuotationsByDay }
 
-        allDays
-        .forEach(({ key: quotationDate }) => {
+        const hydratedDayKeys = new Set([...loadedDayKeys, ...Object.keys(savedQuotationsByDay)])
+
+        hydratedDayKeys
+        .forEach((quotationDate) => {
           const savedQuotations = savedQuotationsByDay[quotationDate] ?? []
           const currentQuotations = nextQuotationsByDay[quotationDate] ?? []
           const unsavedLocalQuotations = currentQuotations.filter(
@@ -414,7 +414,7 @@ const Week = () => {
         return nextQuotationsByDay
       })
     })
-  }, [allDays, getQuotations, vegetables])
+  }, [getQuotations, loadedDayKeys, todayKey, vegetables])
 
   useEffect(() => {
     loadSavedQuotations()
@@ -1049,6 +1049,20 @@ const Week = () => {
         )}
       </div>
 
+      <div className="mt-4 flex w-full flex-col justify-around gap-3 px-3 md:grid md:w-[99%] md:grid-cols-3 md:gap-0 md:px-0">
+        {loadedDays.map((day, index) => (
+          <div className="flex flex-col gap-3 md:flex-row md:gap-0" key={day.key}>
+            <DayColumn
+              day={day}
+              index={index}
+              onQuotationDelete={handleQuotationDelete}
+              onQuotationPriceChange={handleQuotationPriceChange}
+              quotations={quotationsByDay[day.key] ?? []}
+            />
+          </div>
+        ))}
+       
+      </div>
       {outOfRangeQuotationDays.length > 0 && (
         <div className="mt-4 flex w-[calc(100%-1.5rem)] flex-wrap justify-end gap-3 md:w-[99%]">
           {outOfRangeQuotationDays.map((day) => (
@@ -1065,24 +1079,9 @@ const Week = () => {
           ))}
         </div>
       )}
-
-      <div className="mt-4 flex w-full flex-col justify-around gap-3 px-3 md:grid md:w-[99%] md:grid-cols-3 md:gap-0 md:px-0">
-        {loadedDays.map((day, index) => (
-          <div className="flex flex-col gap-3 md:flex-row md:gap-0" key={day.key}>
-            <DayColumn
-              day={day}
-              index={index}
-              onQuotationDelete={handleQuotationDelete}
-              onQuotationPriceChange={handleQuotationPriceChange}
-              quotations={quotationsByDay[day.key] ?? []}
-            />
-          </div>
-        ))}
-       
-      </div>
        <button
           className="rounded border border-gray-300 px-3 py-2 font-semibold hover:cursor-pointer"
-          onClick={() => setFutureDaysShown((prev) => Math.min(prev + 8))}
+          onClick={() => setFutureDaysShown((prev) => Math.min(prev + 9))}
           type="button"
         >
           Voir plus
