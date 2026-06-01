@@ -143,6 +143,12 @@ const parseQuotationDate = (dateKey: string) => {
   return new Date(year, month - 1, day)
 }
 
+const sortQuotationDaysByDate = (days: QuotationDay[]) => {
+  return [...days].sort(
+    (firstDay, secondDay) => parseQuotationDate(firstDay.key).getTime() - parseQuotationDate(secondDay.key).getTime(),
+  )
+}
+
 const formatShortDate = (date: Date) => {
   return `${String(date.getDate()).padStart(2, "0")}/${String(date.getMonth() + 1).padStart(2, "0")}`
 }
@@ -193,7 +199,7 @@ const Week = () => {
   const [todayKey] = useState(() => formatQuotationDate(getDateOnly(new Date())))
   const visibleDays = useMemo(() => getRollingQuotationDays(parseQuotationDate(todayKey)), [todayKey])
   const visiblePastDays = useMemo(() => getPastDays(parseQuotationDate(todayKey)), [todayKey])
-  const allDays = useMemo(() => [...visibleDays, ...visiblePastDays], [visibleDays, visiblePastDays])
+  const allDays = useMemo(() => sortQuotationDaysByDate([...visibleDays, ...visiblePastDays]), [visibleDays, visiblePastDays])
   const futureQuotationDays = useMemo(
     () =>
       visibleDays
@@ -293,7 +299,8 @@ const Week = () => {
       setQuotationsByDay((currentQuotationsByDay) => {
         const nextQuotationsByDay: QuotationsByDay = { ...currentQuotationsByDay }
 
-        allDays.forEach(({ key: quotationDate }) => {
+        allDays
+        .forEach(({ key: quotationDate }) => {
           const savedQuotations = savedQuotationsByDay[quotationDate] ?? []
           const currentQuotations = nextQuotationsByDay[quotationDate] ?? []
           const unsavedLocalQuotations = currentQuotations.filter(
