@@ -488,6 +488,16 @@ const Week = () => {
     return foundDay?.label.toLowerCase() ?? formatShortDate(parseQuotationDate(dateKey))
   }
 
+  const handleSupplierSelect = (supplier: Supplier) => {
+    setSelectedSupplier((currentSupplier) => currentSupplier?.id === supplier.id ? null : supplier)
+    setDuplicateWarning(null)
+  }
+
+  const handleVegetableSelect = (vegetable: Vegetable) => {
+    setSelectedVegetable((currentVegetable) => currentVegetable?.id === vegetable.id ? null : vegetable)
+    setDuplicateWarning(null)
+  }
+
   const handleQuotationPriceChange = (quotationId: string, price: string) => {
     setQuotationsByDay((currentQuotationsByDay) => {
       return Object.fromEntries(
@@ -646,7 +656,7 @@ const Week = () => {
               selectedSupplier?.id === supplier.id ? "ring-4 ring-primary" : ""
             }`}
             key={supplier.id}
-            onClick={() => setSelectedSupplier(supplier)}
+            onClick={() => handleSupplierSelect(supplier)}
             title={supplier.name}
             type="button"
           >
@@ -669,7 +679,7 @@ const Week = () => {
                 selectedVegetable?.id === vegetable.id ? "outline-4 outline-offset-2 outline-secondary" : ""
               }`}
               key={vegetable.id}
-              onClick={() => setSelectedVegetable(vegetable)}
+              onClick={() => handleVegetableSelect(vegetable)}
               title={vegetable.vegetable}
               type="button"
             >
@@ -688,7 +698,7 @@ const Week = () => {
                   selectedVegetable?.id === vegetable.id ? "ring-2 ring-secondary" : ""
                 }`}
                 key={vegetable.id}
-                onClick={() => setSelectedVegetable(vegetable)}
+                onClick={() => handleVegetableSelect(vegetable)}
                 title={vegetable.vegetable}
                 type="button"
               >
