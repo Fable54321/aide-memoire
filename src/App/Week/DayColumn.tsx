@@ -111,7 +111,7 @@ const DayColumn = ({
                   </div>
                 </div>
                 <button
-                  className="rounded border border-red-200 px-2 py-1 text-xs font-semibold text-red-700 transition hover:bg-red-50"
+                  className="hover:cursor-pointer rounded border border-red-200 px-2 py-1 text-xs font-semibold text-red-700 transition hover:bg-red-50"
                   onClick={() => onQuotationDelete(quotation.id)}
                   type="button"
                 >
