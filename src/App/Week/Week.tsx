@@ -253,18 +253,27 @@ const Week = () => {
   const [futureDaysShown, setFutureDaysShown] = useState(8)
   const visibleFutureDays = useMemo(() => visibleDays.slice(visibleDays.length - futureDaysShown, visibleDays.length), [visibleDays, futureDaysShown])
   const visiblePastDays = useMemo(() => getPastDays(parseQuotationDate(todayKey)), [todayKey])
+  const loadedDays = useMemo(() => sortQuotationDaysByDate([...visibleFutureDays, ...visiblePastDays]), [visibleFutureDays, visiblePastDays])
+  const loadedDayKeys = useMemo(() => new Set(loadedDays.map((day) => day.key)), [loadedDays])
   const selectedQuotationDay = useMemo(
     () => getQuotationDay(selectedQuotationDate || todayKey, todayKey),
     [selectedQuotationDate, todayKey],
   )
   const allDays = useMemo(() => {
     const daysByKey = new Map(
-      [...visibleFutureDays, ...visiblePastDays, selectedQuotationDay].map((day) => [day.key, day]),
+      [...loadedDays, selectedQuotationDay].map((day) => [day.key, day]),
     )
 
     return sortQuotationDaysByDate([...daysByKey.values()])
-  }, [selectedQuotationDay, visibleFutureDays, visiblePastDays])
+  }, [loadedDays, selectedQuotationDay])
   const calendarDays = useMemo(() => getCalendarDays(calendarMonth), [calendarMonth])
+  const outOfRangeQuotationDays = useMemo(() => {
+    return sortQuotationDaysByDate(
+      Object.entries(quotationsByDay)
+        .filter(([dayKey, quotations]) => !loadedDayKeys.has(dayKey) && quotations.length > 0)
+        .map(([dayKey]) => getQuotationDay(dayKey, todayKey)),
+    )
+  }, [loadedDayKeys, quotationsByDay, todayKey])
 
   const groupedVegetables = useMemo(() => {
     const today = parseQuotationDate(todayKey)
@@ -1040,8 +1049,25 @@ const Week = () => {
         )}
       </div>
 
+      {outOfRangeQuotationDays.length > 0 && (
+        <div className="mt-4 flex w-[calc(100%-1.5rem)] flex-wrap justify-end gap-3 md:w-[99%]">
+          {outOfRangeQuotationDays.map((day) => (
+            <div className="w-full max-w-sm md:w-80" key={day.key}>
+              <DayColumn
+                compact
+                day={day}
+                index={1}
+                onQuotationDelete={handleQuotationDelete}
+                onQuotationPriceChange={handleQuotationPriceChange}
+                quotations={quotationsByDay[day.key] ?? []}
+              />
+            </div>
+          ))}
+        </div>
+      )}
+
       <div className="mt-4 flex w-full flex-col justify-around gap-3 px-3 md:grid md:w-[99%] md:grid-cols-3 md:gap-0 md:px-0">
-        {allDays.map((day, index) => (
+        {loadedDays.map((day, index) => (
           <div className="flex flex-col gap-3 md:flex-row md:gap-0" key={day.key}>
             <DayColumn
               day={day}
