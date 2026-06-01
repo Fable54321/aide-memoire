@@ -76,6 +76,7 @@ type SalesProviderProps = {
 const SalesContext = createContext<SalesContextType>({} as SalesContextType)
 const quotationQueueStorageKey = "vegibec-pending-quotation-requests"
 
+// eslint-disable-next-line react-refresh/only-export-components
 export class OfflineQueuedRequestError extends Error {
     queuedQuotationId?: string
 
