@@ -3,7 +3,7 @@ import { createRoot } from 'react-dom/client'
 import { createBrowserRouter, RouterProvider } from 'react-router-dom'
 import './index.css'
 import App from '../src/App/App'
-import Week from './App/Week/Week'
+import Week from './App/ClientsAndVegetables/ClientsAndVegetables'
 import { VegetablesProvider } from './Contexts/vegetablesContext'
 import { SalesProvider } from './Contexts/salesContext'
 

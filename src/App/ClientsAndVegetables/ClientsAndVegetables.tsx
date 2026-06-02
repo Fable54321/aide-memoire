@@ -1,245 +1,29 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from "react"
 import DayColumn from "./DayColumn"
-import costco from "../../assets/images/costco-wholesale.svg"
-import dpro from "../../assets/images/DPro.png"
-import loblaws from "../../assets/images/loblaws.svg"
-import metro from "../../assets/images/metro-inc-logo.svg"
-import sobeys from "../../assets/images/sobeys-logo.svg"
-import maxland from "../../assets/images/MaxLand.png"
-import RoyalAlpha from "../../assets/images/royal_alpha.png"
-import westernHarvest from "../../assets/images/western_harvest.webp"
-import burnacProduce from "../../assets/images/burnac_produce.png"
-import royaltyProduce from "../../assets/images/royalty_produce.png"
-import thomas from "../../assets/images/thomas.png"
-import yvan from "../../assets/images/yvan_perreault.png"
-import jardinsCousineau from "../../assets/images/jardins_cousineau.png"
-import trisonFarms from "../../assets/images/trison_farms.png"
-import beauvais from "../../assets/images/beauvais.png"
-import eagle from "../../assets/images/eagle.png"
-import bono from "../../assets/images/bono.png"
-import michelriendeau from "../../assets/images/michelriendeau.webp"
-import global from "../../assets/images/global.png"
-import jardinsagripro from "../../assets/images/jardinsagripro.png"
-import fms from "../../assets/images/FMS.svg"
-import samifruits from "../../assets/images/samifruits.png"
-import masetfils from "../../assets/images/masetfils.png"
-import patterson from "../../assets/images/patterson_produce.jpg"
 import { OfflineQueuedRequestError, useSales } from "../../Contexts/salesContext"
 import { useVegetables, type Vegetable } from "../../Contexts/vegetablesContext"
 import { ChevronDownIcon } from "lucide-react"
+import {
+  addDays,
+  addMonths,
+  formatCalendarMonth,
+  formatQuotationDate,
+  formatShortDate,
+  getCalendarDays,
+  getDateOnly,
+  getMonthStart,
+  getPastDays,
+  getQuotationDay,
+  getRollingQuotationDays,
+  parseQuotationDate,
+  sortQuotationDaysByDate,
+} from "./dateUtils"
+import { buildSavedQuotationsByDay, getRecentQuotations, mergeSavedQuotationsByDay } from "./quotationUtils"
+import { suppliers } from "./suppliers"
+import { type DuplicateWarning, type Quotation, type QuotationsByDay, type SavedQuotation, type Supplier, type UndoAction } from "./types"
+import { groupVegetablesForQuotation } from "./vegetableUtils"
 
-const suppliers = [
-  { id: 2, name: "Costco", logo: costco },
-  { id: 5, name: "Sobeys", logo: sobeys },
-  { id: 6, name: "Loblaws", logo: loblaws },
-  { id: 3, name: "DPro", logo: dpro },
-  { id: 4, name: "Metro", logo: metro },
-  { id: 7, name: "Maxland", logo: maxland },
-  { id: 8, name: "Royal Alpha", logo: RoyalAlpha },
-  { id: 9, name: "Western Harvest", logo: westernHarvest },
-  { id: 10, name: "Burnac Produce", logo: burnacProduce },
-  { id: 11, name: "Thomas Fruits et Legumes", logo: thomas },
-  { id: 12, name: "Yvan Perreault et fils", logo: yvan },
-  { id: 13, name: "Trison Farms", logo: trisonFarms },
-  { id: 14, name: "Royalty Produce", logo: royaltyProduce },
-  { id: 15, name: "Jardins Cousineau", logo: jardinsCousineau },
-  { id: 16, name: "Beauvais ltée", logo: beauvais },
-  { id: 17, name: "Eagle", logo: eagle },
-  { id: 18, name: "Les fermes Michel Riendeau", logo: michelriendeau },
-  { id: 19, name: "Bono fruits et légumes", logo: bono },
-  { id: 20, name: "Global Produce", logo: global },
-  { id: 21, name: "Jardins AgriPro", logo: jardinsagripro },
-  { id: 22, name: "FMS", logo: fms },
-  { id: 23, name: "Samifruits", logo: samifruits },
-  { id: 24, name: "Mas et fils", logo: masetfils },
-  { id: 25, name: "Patterson produce", logo: patterson },
-]
-
-type Supplier = (typeof suppliers)[number]
-
-type QuotationDay = {
-  key: string
-  label: string
-  shortDate: string
-}
-
-type Quotation = {
-  id: string
-  savedQuotationId: string | null
-  isSaving: boolean
-  saveError: string | null
-  hasUnsavedChanges: boolean
-  supplier: Supplier | null
-  vegetable: Vegetable | null
-  price: string
-  createdAt: string | null
-}
-
-type QuotationsByDay = Record<string, Quotation[]>
-
-type SavedQuotation = {
-  id: string
-  client_id: string
-  vegetable_id: number
-  price: number | string
-  quotation_date: string
-  created_at?: string
-  updated_at?: string
-}
-
-type DuplicateWarning = {
-  supplier: Supplier
-  vegetable: Vegetable
-  quotation: Quotation
-  dayKey: string
-  dayLabel: string
-}
-
-type UndoAction =
-  | { type: "add"; quotationId: string }
-  | { type: "replace"; dayKey: string; previousQuotation: Quotation }
-
-const getDateOnly = (date: Date) => new Date(date.getFullYear(), date.getMonth(), date.getDate())
-
-const addDays = (date: Date, days: number) => {
-  const nextDate = new Date(date)
-  nextDate.setDate(date.getDate() + days)
-  return nextDate
-}
-
-const parseSalesDate = (date: string) => {
-  if (!date) {
-    return null
-  }
-
-  const dateOnlyMatch = date.match(/^(\d{4})-(\d{2})-(\d{2})/)
-
-  if (dateOnlyMatch) {
-    const [, year, month, day] = dateOnlyMatch
-    return new Date(Number(year), Number(month) - 1, Number(day))
-  }
-
-  const parsedDate = new Date(date)
-
-  if (Number.isNaN(parsedDate.getTime())) {
-    return null
-  }
-
-  return getDateOnly(parsedDate)
-}
-
-const isDateBetween = (date: Date, startDate: string, endDate: string) => {
-  const parsedStartDate = parseSalesDate(startDate)
-  const parsedEndDate = parseSalesDate(endDate)
-
-  if (!parsedStartDate || !parsedEndDate) {
-    return false
-  }
-
-  return date >= parsedStartDate && date <= parsedEndDate
-}
-
-const formatQuotationDate = (date: Date) => {
-  const year = date.getFullYear()
-  const month = String(date.getMonth() + 1).padStart(2, "0")
-  const day = String(date.getDate()).padStart(2, "0")
-
-  return `${year}-${month}-${day}`
-}
-
-const parseQuotationDate = (dateKey: string) => {
-  const [year, month, day] = dateKey.split("-").map(Number)
-  return new Date(year, month - 1, day)
-}
-
-const sortQuotationDaysByDate = (days: QuotationDay[]) => {
-  return [...days].sort(
-    (firstDay, secondDay) => parseQuotationDate(firstDay.key).getTime() - parseQuotationDate(secondDay.key).getTime(),
-  )
-}
-
-const formatShortDate = (date: Date) => {
-  return date.toLocaleDateString("fr-CA", { day: "numeric", month: "long" })
-}
-
-const formatCalendarMonth = (date: Date) => {
-  return date.toLocaleDateString("fr-CA", { month: "long", year: "numeric" })
-}
-
-const getRollingQuotationDays = (today: Date) => {
-  const dayNames = ["Dimanche", "Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi"]
-
-  return Array.from({ length: 32 }, (_, index): QuotationDay => {
-    const date = new Date(today)
-    date.setDate(today.getDate() + index)
-
-    return {
-      key: formatQuotationDate(date),
-      label: index === 0 ? "Aujourd'hui" : index === 1 ? "Demain" : index === 2 ? "Apres-demain" : dayNames[date.getDay()],
-      shortDate: formatShortDate(date),
-    }
-  }).reverse()
-}
-
-const getPastDays = (today: Date) => {
-  const dayNames = ["Dimanche", "Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi"]
-
-  return Array.from({ length: 1 }, (_, index): QuotationDay => {
-    const date = new Date(today)
-    date.setDate(today.getDate() - 1 - index)
-
-    return {
-      key: formatQuotationDate(date),
-      label: index === 0 ? "Hier" : dayNames[date.getDay()],
-      shortDate: formatShortDate(date),
-    }
-  })
-}
-
-const getQuotationDay = (dateKey: string, todayKey: string): QuotationDay => {
-  const dayNames = ["Dimanche", "Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi"]
-  const date = parseQuotationDate(dateKey)
-  const today = parseQuotationDate(todayKey)
-  const dayDifference = Math.round((getDateOnly(date).getTime() - getDateOnly(today).getTime()) / 86_400_000)
-
-  return {
-    key: dateKey,
-    label:
-      dayDifference === 0
-        ? "Aujourd'hui"
-        : dayDifference === 1
-          ? "Demain"
-          : dayDifference === 2
-            ? "Apres-demain"
-            : dayDifference === -1
-              ? "Hier"
-              : dayNames[date.getDay()],
-    shortDate: formatShortDate(date),
-  }
-}
-
-const getMonthStart = (date: Date) => new Date(date.getFullYear(), date.getMonth(), 1)
-
-const addMonths = (date: Date, months: number) => {
-  const nextDate = new Date(date)
-  nextDate.setMonth(date.getMonth() + months, 1)
-  return getMonthStart(nextDate)
-}
-
-const getCalendarDays = (monthDate: Date) => {
-  const monthStart = getMonthStart(monthDate)
-  const firstCalendarDate = new Date(monthStart)
-  const mondayFirstOffset = (monthStart.getDay() + 6) % 7
-  firstCalendarDate.setDate(monthStart.getDate() - mondayFirstOffset)
-
-  return Array.from({ length: 42 }, (_, index) => {
-    const date = new Date(firstCalendarDate)
-    date.setDate(firstCalendarDate.getDate() + index)
-    return date
-  })
-}
-
-const Week = () => {
+const ClientsAndVegetables = () => {
   const [quotationsByDay, setQuotationsByDay] = useState<QuotationsByDay>({})
   const [allSavedQuotations, setAllSavedQuotations] = useState<SavedQuotation[]>([])
   const [selectedSupplier, setSelectedSupplier] = useState<Supplier | null>(null)
@@ -285,30 +69,10 @@ const Week = () => {
     )
   }, [loadedDayKeys, quotationsByDay, todayKey])
 
-  const groupedVegetables = useMemo(() => {
-    const today = parseQuotationDate(todayKey)
-    const filteredVegetables = vegetables
-      .filter((vegetable) => vegetable.vegetable !== "AUCUNE" && vegetable.is_generic === false && vegetable.vegetable !== "ENDIVES")
-      .map((vegetable) => ({
-        isCurrentlySold:
-          isDateBetween(today, vegetable.sales_debut_1, vegetable.sales_end_1) ||
-          isDateBetween(today, vegetable.sales_debut_2, vegetable.sales_end_2),
-        vegetable,
-      }))
-
-    return {
-      currentlySoldVegetables: filteredVegetables
-        .filter(({ isCurrentlySold }) => isCurrentlySold)
-        .sort((firstVegetable, secondVegetable) =>
-          firstVegetable.vegetable.vegetable.localeCompare(secondVegetable.vegetable.vegetable),
-        ),
-      otherVegetables: filteredVegetables
-        .filter(({ isCurrentlySold }) => !isCurrentlySold)
-        .sort((firstVegetable, secondVegetable) =>
-          firstVegetable.vegetable.vegetable.localeCompare(secondVegetable.vegetable.vegetable),
-        ),
-    }
-  }, [todayKey, vegetables])
+  const groupedVegetables = useMemo(
+    () => groupVegetablesForQuotation(vegetables, parseQuotationDate(todayKey)),
+    [todayKey, vegetables],
+  )
 
   useEffect(() => {
     if (selectedSupplier && selectedVegetable) {
@@ -352,77 +116,11 @@ const Week = () => {
     getQuotations().then((savedQuotations: SavedQuotation[]) => {
       setAllSavedQuotations(savedQuotations)
 
-      const savedQuotationsByDay = savedQuotations.reduce<QuotationsByDay>(
-        (currentQuotationsByDay, savedQuotation) => {
-          const parsedQuotationDate = parseSalesDate(savedQuotation.quotation_date)
+      const savedQuotationsByDay = buildSavedQuotationsByDay(savedQuotations, vegetables, todayKey, loadedDayKeys)
 
-          if (!parsedQuotationDate) {
-            return currentQuotationsByDay
-          }
-
-          const quotationDate = formatQuotationDate(parsedQuotationDate)
-
-          if (quotationDate < todayKey && !loadedDayKeys.has(quotationDate)) {
-            return currentQuotationsByDay
-          }
-
-          const supplier = suppliers.find(
-            (currentSupplier) => String(currentSupplier.id) === String(savedQuotation.client_id),
-          )
-          const vegetable = vegetables.find(
-            (currentVegetable) => currentVegetable.id === savedQuotation.vegetable_id,
-          )
-
-          if (!supplier || !vegetable) {
-            return currentQuotationsByDay
-          }
-
-          return {
-            ...currentQuotationsByDay,
-            [quotationDate]: [
-              ...(currentQuotationsByDay[quotationDate] ?? []),
-              {
-                id: `saved-${savedQuotation.id}`,
-                savedQuotationId: savedQuotation.id,
-                isSaving: false,
-                saveError: null,
-                hasUnsavedChanges: false,
-                price: String(savedQuotation.price),
-                createdAt: savedQuotation.created_at ?? savedQuotation.updated_at ?? null,
-                supplier,
-                vegetable,
-              },
-            ],
-          }
-        },
-        {},
+      setQuotationsByDay((currentQuotationsByDay) =>
+        mergeSavedQuotationsByDay(currentQuotationsByDay, savedQuotationsByDay, loadedDayKeys),
       )
-
-      setQuotationsByDay((currentQuotationsByDay) => {
-        const nextQuotationsByDay: QuotationsByDay = { ...currentQuotationsByDay }
-
-        const hydratedDayKeys = new Set([...loadedDayKeys, ...Object.keys(savedQuotationsByDay)])
-
-        hydratedDayKeys
-        .forEach((quotationDate) => {
-          const savedQuotations = savedQuotationsByDay[quotationDate] ?? []
-          const currentQuotations = nextQuotationsByDay[quotationDate] ?? []
-          const unsavedLocalQuotations = currentQuotations.filter(
-            (currentQuotation) =>
-              currentQuotation.savedQuotationId === null &&
-              !savedQuotations.some(
-                (savedQuotation) =>
-                  savedQuotation.supplier?.id === currentQuotation.supplier?.id &&
-                  savedQuotation.vegetable?.id === currentQuotation.vegetable?.id &&
-                  savedQuotation.price === currentQuotation.price,
-              ),
-          )
-
-          nextQuotationsByDay[quotationDate] = [...unsavedLocalQuotations, ...savedQuotations]
-        })
-
-        return nextQuotationsByDay
-      })
     })
   }, [getQuotations, loadedDayKeys, todayKey, vegetables])
 
@@ -534,31 +232,10 @@ const Week = () => {
     })
   }, [patchQuotation, postQuotation, quotationsByDay])
 
-  const recentQuotations = useMemo(() => {
-    return allSavedQuotations
-      .map((quotation) => {
-        const supplier = suppliers.find(
-          (currentSupplier) => String(currentSupplier.id) === String(quotation.client_id),
-        )
-        const vegetable = vegetables.find((currentVegetable) => currentVegetable.id === quotation.vegetable_id)
-        const parsedDate = parseSalesDate(quotation.quotation_date)
-
-        if (!supplier || !vegetable || !parsedDate) {
-          return null
-        }
-
-        return {
-          id: quotation.id,
-          supplier,
-          vegetable,
-          price: String(quotation.price),
-          date: parsedDate,
-          dateKey: formatQuotationDate(parsedDate),
-        }
-      })
-      .filter((quotation) => quotation !== null)
-      .sort((firstQuotation, secondQuotation) => secondQuotation.date.getTime() - firstQuotation.date.getTime())
-  }, [allSavedQuotations, vegetables])
+  const recentQuotations = useMemo(
+    () => getRecentQuotations(allSavedQuotations, vegetables),
+    [allSavedQuotations, vegetables],
+  )
 
   const selectedClientHistory = useMemo(() => {
     if (!selectedSupplier) {
@@ -1107,4 +784,4 @@ const Week = () => {
   )
 }
 
-export default Week
+export default ClientsAndVegetables

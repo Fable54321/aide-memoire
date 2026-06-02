@@ -1,30 +1,5 @@
-import { type Vegetable } from "../../Contexts/vegetablesContext"
+import { type Quotation, type QuotationDay } from "./types"
 import "./DayColumn.css"
-
-type Supplier = {
-  id: string | number
-  name: string
-  logo: string
-}
-
-type QuotationDay = {
-  key: string
-  label: string
-  shortDate: string
-}
-
-type Quotation = {
-  id: string
-  savedQuotationId: string | null
-  isSaving: boolean
-  saveError: string | null
-  hasUnsavedChanges: boolean
-  supplier: Supplier | null
-  vegetable: Vegetable | null
-  price: string
-  createdAt: string | null
-}
-
 
 type DayColumnProps = {
   day: QuotationDay
