@@ -65,7 +65,7 @@ const DayColumn = ({
       className={
         compact
           ? "w-full overflow-hidden rounded border-2 border-secondary/50 bg-white pb-3 shadow-xl"
-          : `min-h-96 w-full border-2 ${index < 3 ? "border-t-4" : ""} ${
+          : `min-h-0 w-full border-2 ${index < 3 ? "border-t-4" : ""} ${
               index === 0 || index === 3 ? "border-l-4" : ""
             } ${index === 2 || index === 5 ? "border-r-4" : ""} bg-white/35 pb-4 md:min-h-150 md:flex-1`
       }
@@ -91,7 +91,7 @@ const DayColumn = ({
               key={quotation.id}
             >
               <div className="flex items-start justify-between gap-3">
-                <div className="flex min-w-0 items-center gap-3">
+                <div className="flex min-w-0 flex-1 items-center gap-3">
                   {quotation.supplier && (
                     <div className={`${compact ? "h-10 w-12" : "h-12 w-16"} grid flex-none place-items-center rounded border border-gray-200 bg-white px-2 py-1`}>
                       <img
@@ -105,13 +105,13 @@ const DayColumn = ({
                     <p className={`${compact ? "text-sm" : "text-base"} truncate font-bold text-secondary`}>
                       {quotation.supplier?.name ?? "Client a choisir"}
                     </p>
-                    <p className={`${compact ? "text-xs" : "mt-1 text-sm"} font-semibold text-gray-700`}>
+                    <p className={`${compact ? "text-xs" : "mt-1 text-sm"} break-words font-semibold text-gray-700`}>
                       {quotation.vegetable?.vegetable ?? "Legume a choisir"}
                     </p>
                   </div>
                 </div>
                 <button
-                  className="hover:cursor-pointer rounded border border-red-200 px-2 py-1 text-xs font-semibold text-red-700 transition hover:bg-red-50"
+                  className="flex-none hover:cursor-pointer rounded border border-red-200 px-2 py-1 text-xs font-semibold text-red-700 transition hover:bg-red-50"
                   onClick={() => onQuotationDelete(quotation.id)}
                   type="button"
                 >

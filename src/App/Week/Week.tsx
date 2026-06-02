@@ -821,31 +821,33 @@ const Week = () => {
       </div>
 
       <form
-        className="mt-5 grid w-[calc(100%-1.5rem)] gap-4 rounded border-2 border-secondary bg-white p-4 shadow-md md:w-[min(1080px,99%)] md:grid-cols-[1fr_1fr_150px_minmax(230px,280px)] md:items-start"
+        className="relative mt-5 flex w-[calc(100%-1.5rem)] flex-col items-stretch gap-3 rounded border-2 border-secondary bg-white p-3 shadow-md sm:p-4 md:w-[min(1080px,99%)] md:flex-row md:items-start md:gap-4 md:pb-10"
         onSubmit={saveNewQuotation}
       >
-        <label className="flex flex-col gap-1 text-sm font-bold text-secondary">
+        <div className="flex w-full flex-col justify-center gap-2 md:my-auto md:flex-1">
+        <label className="flex flex-col gap-1 font-bold text-secondary">
           Client
           <input
-            className="rounded border border-gray-300 bg-tertiary px-3 py-3 text-base text-gray-900"
+            className="w-full min-w-0 rounded border border-gray-300 bg-tertiary px-3 py-3 text-base text-gray-900 sm:text-[1.3em]"
             placeholder="Choisir un client"
             readOnly
             value={selectedSupplier?.name ?? ""}
           />
         </label>
-        <label className="flex flex-col gap-1 text-sm font-bold text-secondary">
+        <label className="flex flex-col gap-1 font-bold text-secondary">
           Produit
           <input
-            className="rounded border border-gray-300 bg-tertiary px-3 py-3 text-base text-gray-900"
+            className="w-full min-w-0 rounded border border-gray-300 bg-tertiary px-3 py-3 text-base text-gray-900 sm:text-[1.3em]"
             placeholder="Choisir un produit"
             readOnly
             value={selectedVegetable?.vegetable ?? ""}
           />
         </label>
-        <label className="flex flex-col gap-1 text-sm font-bold text-secondary">
+        </div>
+        <label className="flex w-full flex-col gap-1 font-bold text-secondary md:my-auto md:max-w-30">
           Prix
           <input
-            className="rounded border-2 border-secondary px-3 py-3 text-center text-3xl font-bold outline-primary"
+            className="w-full rounded border-2 border-secondary px-3 py-3 text-center text-3xl font-bold outline-primary"
             inputMode="decimal"
             onChange={(event) => setDraftPrice(event.target.value)}
             placeholder="32"
@@ -854,7 +856,7 @@ const Week = () => {
             value={draftPrice}
           />
         </label>
-        <div className="grid gap-2 rounded border border-secondary/20 bg-tertiary p-3">
+        <div className="grid w-full gap-2 rounded border border-secondary/20 bg-tertiary p-3 md:flex-1">
           <button
             className="button-generic-light min-h-14 disabled:opacity-40"
             disabled={!selectedSupplier || !selectedVegetable || draftPrice.trim() === ""}
@@ -895,7 +897,7 @@ const Week = () => {
             </button>
 
             {isCalendarOpen && (
-              <div className="absolute right-0 top-full z-30 mt-2 w-[min(22rem,calc(100vw-3rem))] rounded border-2 border-secondary bg-white p-3 shadow-2xl">
+              <div className="absolute left-1/2 top-full z-30 mt-2 w-[min(22rem,calc(100vw-3rem))] -translate-x-1/2 rounded border-2 border-secondary bg-white p-3 shadow-2xl md:left-auto md:right-0 md:translate-x-0">
                 <div className="flex items-center justify-between gap-2">
                   <button
                     className="h-11 w-11 hover:cursor-pointer rounded border border-secondary/30 bg-white text-lg font-black text-secondary transition hover:bg-tertiary disabled:opacity-30"
@@ -973,7 +975,7 @@ const Week = () => {
             </div>
         </div>
 
-        <div className="md:col-span-4">
+        <div className="w-full md:absolute md:bottom-2 md:left-4 md:w-[calc(100%-2rem)]">
           {recentPriceSuggestions.length > 0 && (
             <p className="text-sm font-semibold text-gray-700">
               Recent:{" "}
@@ -1030,8 +1032,8 @@ const Week = () => {
                 <p className="text-sm text-gray-500">Aucun historique.</p>
               ) : (
                 selectedClientHistory.map((quotation) => (
-                  <p className="flex justify-between gap-3 text-[1.3em]" key={quotation.id}>
-                    <span>
+                  <p className="flex flex-col gap-1 text-base sm:flex-row sm:justify-between sm:gap-3 sm:text-[1.3em]" key={quotation.id}>
+                    <span className="min-w-0 break-words">
                       {getRelativeDayLabel(quotation.dateKey)} - {quotation.vegetable.vegetable}
                     </span>
                     <strong>{quotation.price}</strong>
@@ -1051,8 +1053,8 @@ const Week = () => {
                 <p className="text-sm text-gray-500">Aucun historique.</p>
               ) : (
                 selectedVegetableHistory.map((quotation) => (
-                  <p className="flex justify-between gap-3 text-[1.3em] " key={quotation.id}>
-                    <span>
+                  <p className="flex flex-col gap-1 text-base sm:flex-row sm:justify-between sm:gap-3 sm:text-[1.3em]" key={quotation.id}>
+                    <span className="min-w-0 break-words">
                       {quotation.supplier.name} - {getRelativeDayLabel(quotation.dateKey)}
                     </span>
                     <strong>{quotation.price}</strong>
