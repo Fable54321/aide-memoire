@@ -847,7 +847,7 @@ const Week = () => {
         <label className="flex w-full flex-col gap-1 font-bold text-secondary md:my-auto md:max-w-30">
           Prix
           <input
-            className="w-full rounded border-2 border-secondary px-3 py-3 text-center text-3xl font-bold outline-primary"
+            className="w-full rounded border-2 placeholder:text-secondary/20 border-secondary px-3 py-3 text-center text-3xl font-bold outline-primary"
             inputMode="decimal"
             onChange={(event) => setDraftPrice(event.target.value)}
             placeholder="32"
