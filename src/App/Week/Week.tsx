@@ -1033,7 +1033,7 @@ const Week = () => {
               ) : (
                 selectedClientHistory.map((quotation) => (
                   <p className="flex flex-col gap-1 text-base sm:flex-row sm:justify-between sm:gap-3 sm:text-[1.3em]" key={quotation.id}>
-                    <span className="min-w-0 break-words">
+                    <span className="min-w-0 wrap-break-word">
                       {getRelativeDayLabel(quotation.dateKey)} - {quotation.vegetable.vegetable}
                     </span>
                     <strong>{quotation.price}</strong>
@@ -1054,7 +1054,7 @@ const Week = () => {
               ) : (
                 selectedVegetableHistory.map((quotation) => (
                   <p className="flex flex-col gap-1 text-base sm:flex-row sm:justify-between sm:gap-3 sm:text-[1.3em]" key={quotation.id}>
-                    <span className="min-w-0 break-words">
+                    <span className="min-w-0 wrap-break-word">
                       {quotation.supplier.name} - {getRelativeDayLabel(quotation.dateKey)}
                     </span>
                     <strong>{quotation.price}</strong>
