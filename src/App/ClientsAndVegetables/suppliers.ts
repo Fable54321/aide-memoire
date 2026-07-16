@@ -49,3 +49,7 @@ export const suppliers = [
   { id: 24, name: "Mas et fils", logo: masetfils },
   { id: 25, name: "Patterson produce", logo: patterson },
 ] as const
+
+const rfqSupplierNames = new Set(["Loblaws", "Metro", "Sobeys"])
+
+export const rfqSuppliers = suppliers.filter(({ name }) => rfqSupplierNames.has(name))

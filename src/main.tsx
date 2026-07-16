@@ -4,6 +4,7 @@ import { createBrowserRouter, RouterProvider } from 'react-router-dom'
 import './index.css'
 import App from '../src/App/App'
 import Week from './App/ClientsAndVegetables/ClientsAndVegetables'
+import RFQ from './App/RFQ/RFQ'
 import { VegetablesProvider } from './Contexts/vegetablesContext'
 import { SalesProvider } from './Contexts/salesContext'
 
@@ -16,6 +17,10 @@ const router = createBrowserRouter([
       {
         index: true,
         element: <Week />,
+      },
+      {
+        path: 'rfq',
+        element: <RFQ />,
       },
     ]
   },
