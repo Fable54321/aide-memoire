@@ -7,6 +7,9 @@ import Week from './App/ClientsAndVegetables/ClientsAndVegetables'
 import RFQ from './App/RFQ/RFQ'
 import { VegetablesProvider } from './Contexts/vegetablesContext'
 import { SalesProvider } from './Contexts/salesContext'
+import { RfqProvider } from './Contexts/rfqContext'
+import { AuthProvider } from './Contexts/AuthContext'
+
 
 
 const router = createBrowserRouter([
@@ -28,10 +31,14 @@ const router = createBrowserRouter([
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <VegetablesProvider>
-      <SalesProvider>
-        <RouterProvider router={router} />
-    </SalesProvider>
-    </VegetablesProvider>
+    <AuthProvider>
+        <VegetablesProvider>
+          <SalesProvider>
+            <RfqProvider>
+              <RouterProvider router={router} />
+            </RfqProvider>
+          </SalesProvider>
+        </VegetablesProvider>
+    </AuthProvider>
   </StrictMode>,
 )
