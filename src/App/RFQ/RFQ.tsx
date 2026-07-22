@@ -1,4 +1,5 @@
-import { useState } from "react"
+import { useEffect, useState } from "react"
+import { FileText, Upload, X } from "lucide-react"
 import { rfqSuppliers } from "../ClientsAndVegetables/suppliers"
 import { useRfq } from "../../Contexts/rfqContext"
 
@@ -20,7 +21,7 @@ const sobeysLocations = [
   { code: "B", name: "Boucherville" },
   { code: "Q", name: "Québec" },
   { code: "O", name: "Ontario", details: ["Debert", "Witby"] },
-  { code: "W", name: "West canadien", details: ["Campbell", "Winnipeg", "Calgary", "Edmonton"] },
+  { code: "W", name: "Ouest canadien", details: ["Campbell", "Winnipeg", "Calgary", "Edmonton"] },
   { code: "A", name: "Atlantique", details: ["Mt-Pearl"] },
 ] as const
 
@@ -56,9 +57,31 @@ const formatWeekRange = (start: Date, end: Date) => {
   return `${start.getDate()} ${monthNames[start.getMonth()]} au ${end.getDate()} ${monthNames[end.getMonth()]}`
 }
 
+const formatDateKey = (date: Date) => {
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, "0")
+  const day = String(date.getDate()).padStart(2, "0")
+  return `${year}-${month}-${day}`
+}
+
+type SelectedCell = {
+  productId: number
+  productName: string
+  weekStart: string
+  weekLabel: string
+  locationCode: string
+  locationName: string
+}
+
 const RFQ = () => {
   const [selectedSupplier, setSelectedSupplier] = useState<RfqSupplier>(rfqSuppliers[0])
-  const { productsByClient, loadingByClient, errorsByClient, loadClientProducts } = useRfq()
+  const { productsByClient, loadingByClient, errorsByClient, loadClientProducts, cellsByClient, saveCell, openAttachment } = useRfq()
+  const [selectedCell, setSelectedCell] = useState<SelectedCell | null>(null)
+  const [priceRows, setPriceRows] = useState([{ quantity: "", price: "" }])
+  const [cellStatus, setCellStatus] = useState<"final" | "email">("email")
+  const [files, setFiles] = useState<File[]>([])
+  const [isSaving, setIsSaving] = useState(false)
+  const [saveError, setSaveError] = useState("")
   const products = productsByClient[selectedSupplier.id] ?? []
   const isLoading = loadingByClient[selectedSupplier.id]
   const error = errorsByClient[selectedSupplier.id]
@@ -73,6 +96,7 @@ const RFQ = () => {
     const start = addDays(getMonday(new Date()), index * 7)
     const end = addDays(start, 6)
     return {
+      start: formatDateKey(start),
       number: getIsoWeek(start),
       title: isSobeys
         ? `SF ${addDays(end, 4).getDate()} ${monthNames[addDays(end, 4).getMonth()]}`
@@ -90,6 +114,48 @@ const RFQ = () => {
       ? "bg-fuchsia-100"
       : "bg-green-100"
   const clientAccentColor = isSobeys ? "text-fuchsia-800" : "text-secondary"
+  const savedCells = cellsByClient[selectedSupplier.id] ?? []
+  const activeSavedCell = selectedCell ? savedCells.find((cell) =>
+    cell.product_id === selectedCell.productId && cell.week_start === selectedCell.weekStart && cell.location_code === selectedCell.locationCode,
+  ) : undefined
+
+  const openCell = (cellSelection: SelectedCell) => {
+    const cell = savedCells.find((item) =>
+      item.product_id === cellSelection.productId && item.week_start === cellSelection.weekStart && item.location_code === cellSelection.locationCode,
+    )
+    setPriceRows(cell?.prices.length ? cell.prices.map((item) => ({ quantity: String(item.quantity), price: String(item.price) })) : [{ quantity: "", price: "" }])
+    setCellStatus(cell?.status ?? "email")
+    setFiles([])
+    setSaveError("")
+    setSelectedCell(cellSelection)
+  }
+
+  useEffect(() => {
+    if (!selectedCell) return
+    const close = (event: KeyboardEvent) => event.key === "Escape" && setSelectedCell(null)
+    window.addEventListener("keydown", close)
+    return () => window.removeEventListener("keydown", close)
+  }, [selectedCell])
+
+  const handleSave = async () => {
+    if (!selectedCell) return
+    const parsedPrices = priceRows.filter((row) => row.quantity || row.price).map((row) => ({
+      quantity: Number(row.quantity.replace(",", ".")),
+      price: Number(row.price.replace(",", ".")),
+    }))
+    if (!parsedPrices.length || parsedPrices.some((row) => !Number.isFinite(row.quantity) || row.quantity <= 0 || !Number.isFinite(row.price) || row.price < 0)) {
+      setSaveError("Indiquez une quantité et un prix valides pour chaque ligne.")
+      return
+    }
+    setIsSaving(true)
+    setSaveError("")
+    try {
+      await saveCell({ clientId: selectedSupplier.id, productId: selectedCell.productId, weekStart: selectedCell.weekStart, locationCode: selectedCell.locationCode, status: cellStatus, prices: parsedPrices, files })
+      setSelectedCell(null)
+    } catch (error) {
+      setSaveError(error instanceof Error ? error.message : "Impossible d’enregistrer.")
+    } finally { setIsSaving(false) }
+  }
 
   return (
     <section className="mt-8 w-[min(1080px,calc(100%-1.5rem))]">
@@ -208,7 +274,22 @@ const RFQ = () => {
                               weekIndex % 2 === 0 ? alternateWeekColor : "bg-white"
                             }`}
                             key={`${product.id}-${week.number}-${weekIndex}-${location.code}`}
-                          />
+                          >
+                            <button
+                              className={`h-full min-h-6 w-full cursor-pointer transition hover:bg-primary/35 focus:outline-2 focus:outline-secondary ${
+                                savedCells.some((cell) => cell.product_id === product.id && cell.week_start === week.start && cell.location_code === location.code) ? "bg-secondary/35" : ""
+                              }`}
+                              onClick={() => openCell({ productId: product.id, productName: product.name, weekStart: week.start, weekLabel: week.label, locationCode: location.code, locationName: location.name })}
+                              title={`Modifier ${product.name}, ${week.label}, ${location.name}`}
+                              type="button"
+                            >
+                              <span aria-hidden="true" className="font-black leading-none">
+                                {savedCells.find((cell) => cell.product_id === product.id && cell.week_start === week.start && cell.location_code === location.code)?.status === "final" ? "X" :
+                                  savedCells.find((cell) => cell.product_id === product.id && cell.week_start === week.start && cell.location_code === location.code)?.status === "email" ? "C" : ""}
+                              </span>
+                              <span className="sr-only">Modifier cette case</span>
+                            </button>
+                          </td>
                         )),
                       )}
                     </tr>
@@ -238,6 +319,66 @@ const RFQ = () => {
           </p>
         )}
       </div>
+
+      {selectedCell && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/55 p-4" onMouseDown={(event) => event.target === event.currentTarget && setSelectedCell(null)} role="presentation">
+          <div aria-labelledby="rfq-dialog-title" aria-modal="true" className="max-h-[90vh] w-full max-w-xl overflow-y-auto rounded-xl bg-white p-5 shadow-2xl" role="dialog">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <h3 className="text-xl font-bold text-secondary" id="rfq-dialog-title">{selectedCell.productName}</h3>
+                <p className="text-sm text-gray-600">{selectedCell.weekLabel} · {selectedCell.locationName}</p>
+              </div>
+              <button aria-label="Fermer" className="cursor-pointer rounded p-1 hover:bg-gray-100" onClick={() => setSelectedCell(null)} type="button"><X /></button>
+            </div>
+
+            <div className="mt-5 space-y-3">
+              <fieldset className="mb-5">
+                <legend className="mb-2 text-sm font-bold">État du prix</legend>
+                <div className="grid gap-2 sm:grid-cols-2">
+                  <label className={`flex cursor-pointer items-center gap-3 rounded-lg border p-3 ${cellStatus === "final" ? "border-secondary bg-secondary/10" : "border-gray-300"}`}>
+                    <input checked={cellStatus === "final"} name="rfq-status" onChange={() => setCellStatus("final")} type="radio" />
+                    <span><strong>X — Prix final</strong><span className="block text-xs text-gray-600">RFQ complété</span></span>
+                  </label>
+                  <label className={`flex cursor-pointer items-center gap-3 rounded-lg border p-3 ${cellStatus === "email" ? "border-secondary bg-secondary/10" : "border-gray-300"}`}>
+                    <input checked={cellStatus === "email"} name="rfq-status" onChange={() => setCellStatus("email")} type="radio" />
+                    <span><strong>C — Courriel</strong><span className="block text-xs text-gray-600">Prix communiqué par courriel</span></span>
+                  </label>
+                </div>
+              </fieldset>
+              <div className="grid grid-cols-2 gap-2 text-sm font-bold"><span>Quantité</span><span>Prix</span></div>
+              {priceRows.map((row, index) => (
+                <div className="grid grid-cols-2 gap-2" key={index}>
+                  <input aria-label={`Quantité ${index + 1}`} className="rounded border border-gray-300 px-3 py-2" inputMode="decimal" onChange={(event) => setPriceRows((current) => current.map((item, rowIndex) => rowIndex === index ? { ...item, quantity: event.target.value } : item))} placeholder="ex. 100" value={row.quantity} />
+                  <input aria-label={`Prix ${index + 1}`} className="rounded border border-gray-300 px-3 py-2" inputMode="decimal" onChange={(event) => setPriceRows((current) => current.map((item, rowIndex) => rowIndex === index ? { ...item, price: event.target.value } : item))} placeholder="ex. 12,50" value={row.price} />
+                </div>
+              ))}
+            </div>
+
+            <div className="mt-6 border-t pt-4">
+              <p className="text-sm font-bold">Capture d’écran ou document</p>
+              <label className="mt-2 inline-flex cursor-pointer items-center gap-2 rounded-lg border border-secondary px-4 py-2 text-sm font-bold text-secondary transition hover:bg-secondary/10" htmlFor="rfq-files">
+                <Upload size={17} /> Choisir des fichiers
+              </label>
+              <input accept="image/*,.pdf,.doc,.docx,.xls,.xlsx" className="sr-only" id="rfq-files" multiple onChange={(event) => setFiles(Array.from(event.target.files ?? []))} type="file" />
+              {(activeSavedCell?.attachments.length ?? 0) > 0 && <div className="mt-3 space-y-1">{activeSavedCell?.attachments.map((attachment) => (
+                <button className="flex cursor-pointer items-center gap-2 text-left text-sm text-secondary underline" key={attachment.id} onClick={() => void openAttachment(attachment.id)} type="button"><FileText size={16} />{attachment.file_name}</button>
+              ))}</div>}
+              {files.length > 0 && (
+                <div className="mt-2 space-y-1 text-xs text-gray-600">
+                  <p>{files.length} fichier{files.length > 1 ? "s" : ""} sélectionné{files.length > 1 ? "s" : ""} :</p>
+                  {files.map((file) => <p className="truncate" key={`${file.name}-${file.lastModified}`}>{file.name}</p>)}
+                </div>
+              )}
+            </div>
+
+            {saveError && <p className="mt-4 text-sm text-red-700" role="alert">{saveError}</p>}
+            <div className="mt-6 flex justify-end gap-3">
+              <button className="cursor-pointer rounded border border-gray-300 px-4 py-2" onClick={() => setSelectedCell(null)} type="button">Annuler</button>
+              <button className="cursor-pointer rounded bg-secondary px-5 py-2 font-bold text-white disabled:opacity-50" disabled={isSaving} onClick={() => void handleSave()} type="button">{isSaving ? "Enregistrement…" : "Enregistrer"}</button>
+            </div>
+          </div>
+        </div>
+      )}
     </section>
   )
 }
