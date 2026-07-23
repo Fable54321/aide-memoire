@@ -3,6 +3,7 @@ import { FileText, Settings, Trash2, Upload, X } from "lucide-react"
 import { rfqSuppliers } from "../ClientsAndVegetables/suppliers"
 import { useRfq } from "../../Contexts/rfqContext"
 import AttachmentPreviewModal from "./AttachmentPreviewModal"
+import PendingAttachmentPreview from "./PendingAttachmentPreview"
 import ProductManagementModal from "./ProductManagementModal"
 
 type RfqSupplier = (typeof rfqSuppliers)[number]
@@ -410,6 +411,7 @@ const RFQ = () => {
             <div className="flex items-start justify-between gap-4">
               <div>
                 <h3 className="text-xl font-bold text-secondary" id="rfq-dialog-title">{selectedCell.productName}</h3>
+                <p className="mt-1 text-sm font-bold uppercase text-gray-800">{selectedSupplier.name}</p>
                 <p className="text-sm text-gray-600">{selectedCell.weekLabel} · {selectedCell.locationName}</p>
               </div>
               <button aria-label="Fermer" className="cursor-pointer rounded p-1 hover:bg-gray-100" onClick={() => setSelectedCell(null)} type="button"><X /></button>
@@ -465,9 +467,15 @@ const RFQ = () => {
                 <button className="flex cursor-pointer items-center gap-2 text-left text-sm text-secondary underline" key={attachment.id} onClick={() => attachment.content_type.startsWith("image/") ? setPreviewAttachment({ id: attachment.id, fileName: getAttachmentDisplayName(attachment.file_name, attachment.content_type) }) : void openAttachment(attachment.id)} type="button"><FileText size={16} />{getAttachmentDisplayName(attachment.file_name, attachment.content_type)}</button>
               ))}</div>}
               {files.length > 0 && (
-                <div className="mt-2 space-y-1 text-xs text-gray-600">
+                <div className="mt-3 space-y-2">
                   <p>{files.length} fichier{files.length > 1 ? "s" : ""} sélectionné{files.length > 1 ? "s" : ""} :</p>
-                  {files.map((file) => <p className="truncate" key={`${file.name}-${file.lastModified}`}>{getAttachmentDisplayName(file.name, file.type)}</p>)}
+                  {files.map((file, index) => (
+                    <PendingAttachmentPreview
+                      displayName={getAttachmentDisplayName(file.name, file.type)}
+                      file={file}
+                      key={`${file.name}-${file.lastModified}-${index}`}
+                    />
+                  ))}
                 </div>
               )}
             </div>
