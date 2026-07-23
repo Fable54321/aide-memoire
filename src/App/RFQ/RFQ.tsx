@@ -158,7 +158,7 @@ const RFQ = () => {
   }
 
   return (
-    <section className="mt-8 w-[min(1080px,calc(100%-1.5rem))]">
+    <section className="mt-8 w-[min(1080px,calc(100%-1.5rem))] lg:w-[min(1440px,calc(100%-2rem))]">
       <div className="text-center">
         <h2 className="text-2xl font-bold">RFQ</h2>
         <p className="mt-2 text-gray-600">Sélectionnez un client pour consulter ses RFQ.</p>
@@ -211,7 +211,7 @@ const RFQ = () => {
               <table className="w-max min-w-full table-fixed border-collapse text-sm text-black">
                 <thead>
                   <tr>
-                    <th className="sticky left-0 z-20 w-56 min-w-56 bg-white" rowSpan={2}>
+                    <th className="sticky left-0 z-20 w-56 min-w-56 bg-white lg:w-64 lg:min-w-64" rowSpan={2}>
                       <span className="sr-only">Produits</span>
                     </th>
                     {weeks.map((week, weekIndex) => (
@@ -238,7 +238,7 @@ const RFQ = () => {
                     {weeks.flatMap((week, weekIndex) =>
                       locations.map((location, locationIndex) => (
                         <th
-                          className={`h-6 w-6 min-w-6 border-y-2 border-black text-center font-extrabold ${
+                          className={`h-6 w-6 min-w-6 border-y-2 border-black text-center font-extrabold lg:h-8 lg:w-8 lg:min-w-8 ${
                             locationIndex === 0 ? "border-l-2" : "border-l border-l-black/60"
                           } ${locationIndex === locations.length - 1 ? "border-r-2" : ""} ${
                             weekIndex % 2 === 0 ? alternateWeekColor : "bg-white"
@@ -257,7 +257,7 @@ const RFQ = () => {
                   {products.map((product) => (
                     <tr key={product.id}>
                       <th
-                        className={`sticky left-0 z-10 h-6 w-56 min-w-56 border border-black bg-white px-2 text-left font-normal ${
+                        className={`sticky left-0 z-10 h-6 w-56 min-w-56 border border-black bg-white px-2 text-left font-normal lg:h-8 lg:w-64 lg:min-w-64 lg:px-3 ${
                           isSobeys ? "text-fuchsia-800" : ""
                         }`}
                         scope="row"
@@ -268,7 +268,7 @@ const RFQ = () => {
                         locations.map((location, locationIndex) => (
                           <td
                             aria-label={`${product.name}, semaine ${week.number}, ${location.name}`}
-                            className={`h-6 w-6 min-w-6 border-y border-black/60 ${
+                            className={`h-6 w-6 min-w-6 border-y border-black/60 lg:h-8 lg:w-8 lg:min-w-8 ${
                               locationIndex === 0 ? "border-l-2 border-l-black" : "border-l border-l-black/40"
                             } ${locationIndex === locations.length - 1 ? "border-r-2 border-r-black" : ""} ${
                               weekIndex % 2 === 0 ? alternateWeekColor : "bg-white"
@@ -276,7 +276,7 @@ const RFQ = () => {
                             key={`${product.id}-${week.number}-${weekIndex}-${location.code}`}
                           >
                             <button
-                              className={`h-full min-h-6 w-full cursor-pointer transition hover:bg-primary/35 focus:outline-2 focus:outline-secondary ${
+                              className={`h-full min-h-6 w-full cursor-pointer transition hover:bg-primary/35 focus:outline-2 focus:outline-secondary lg:min-h-8 ${
                                 savedCells.some((cell) => cell.product_id === product.id && cell.week_start === week.start && cell.location_code === location.code) ? "bg-secondary/35" : ""
                               }`}
                               onClick={() => openCell({ productId: product.id, productName: product.name, weekStart: week.start, weekLabel: week.label, locationCode: location.code, locationName: location.name })}
