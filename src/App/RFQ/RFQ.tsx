@@ -61,6 +61,14 @@ const formatWeekRange = (start: Date, end: Date) => {
 
 const formatShortDate = (date: Date) => `${date.getDate()} ${monthNames[date.getMonth()]}`
 
+const getAttachmentDisplayName = (fileName: string, contentType: string) => {
+  if (contentType.startsWith("image/")) {
+    if (fileName.toLowerCase().startsWith("capture d")) return "Capture d’écran"
+    return fileName.replace(/\.[^.]+$/, "")
+  }
+  return fileName
+}
+
 const formatDateKey = (date: Date) => {
   const year = date.getFullYear()
   const month = String(date.getMonth() + 1).padStart(2, "0")
@@ -180,6 +188,13 @@ const RFQ = () => {
       .filter((item) => item.kind === "file" && item.type.startsWith("image/"))
       .map((item) => item.getAsFile())
       .filter((file): file is File => file !== null)
+      .map((file) => {
+        const extension = file.type.split("/")[1]?.replace("jpeg", "jpg") || "png"
+        return new File([file], `Capture d'ecran.${extension}`, {
+          type: file.type,
+          lastModified: Date.now(),
+        })
+      })
 
     if (!pastedImages.length) return
 
@@ -447,12 +462,12 @@ const RFQ = () => {
               </label>
               <input accept="image/*,.pdf,.doc,.docx,.xls,.xlsx" className="sr-only" id="rfq-files" multiple onChange={(event) => setFiles(Array.from(event.target.files ?? []))} type="file" />
               {(activeSavedCell?.attachments.length ?? 0) > 0 && <div className="mt-3 space-y-1">{activeSavedCell?.attachments.map((attachment) => (
-                <button className="flex cursor-pointer items-center gap-2 text-left text-sm text-secondary underline" key={attachment.id} onClick={() => attachment.content_type.startsWith("image/") ? setPreviewAttachment({ id: attachment.id, fileName: attachment.file_name }) : void openAttachment(attachment.id)} type="button"><FileText size={16} />{attachment.file_name}</button>
+                <button className="flex cursor-pointer items-center gap-2 text-left text-sm text-secondary underline" key={attachment.id} onClick={() => attachment.content_type.startsWith("image/") ? setPreviewAttachment({ id: attachment.id, fileName: getAttachmentDisplayName(attachment.file_name, attachment.content_type) }) : void openAttachment(attachment.id)} type="button"><FileText size={16} />{getAttachmentDisplayName(attachment.file_name, attachment.content_type)}</button>
               ))}</div>}
               {files.length > 0 && (
                 <div className="mt-2 space-y-1 text-xs text-gray-600">
                   <p>{files.length} fichier{files.length > 1 ? "s" : ""} sélectionné{files.length > 1 ? "s" : ""} :</p>
-                  {files.map((file) => <p className="truncate" key={`${file.name}-${file.lastModified}`}>{file.name}</p>)}
+                  {files.map((file) => <p className="truncate" key={`${file.name}-${file.lastModified}`}>{getAttachmentDisplayName(file.name, file.type)}</p>)}
                 </div>
               )}
             </div>
