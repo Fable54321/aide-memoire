@@ -14,6 +14,7 @@ export type RfqProduct = {
   client_id: number
   name: string
   display_order: number
+  is_active: boolean
 }
 
 export type RfqCell = {
@@ -37,7 +38,10 @@ type RfqContextType = {
   loadingByClient: Record<number, boolean>
   errorsByClient: Record<number, string | null>
   loadClientProducts: (clientId: number) => Promise<void>
+  getAllClientProducts: (clientId: number) => Promise<RfqProduct[]>
   addProduct: (clientId: number, name: string) => Promise<void>
+  deactivateProduct: (clientId: number, productId: number) => Promise<void>
+  activateProduct: (clientId: number, productId: number) => Promise<void>
   cellsByClient: Record<number, RfqCell[]>
   loadClientCells: (clientId: number) => Promise<void>
   saveCell: (data: { clientId: number; productId: number; weekStart: string; locationCode: string; status: "final" | "email"; prices: Array<{ quantity: number; price: number }>; files: File[] }) => Promise<void>
@@ -74,6 +78,27 @@ export const RfqProvider = ({ children }: { children: ReactNode }) => {
     await fetchWithAuth(`/sales/clients/${clientId}/products`, {
       method: "POST",
       body: { name },
+    })
+    await loadClientProducts(clientId)
+  }, [loadClientProducts])
+
+  const getAllClientProducts: RfqContextType["getAllClientProducts"] = useCallback(async (clientId) => {
+    const response = await fetchWithAuth<ClientProductsResponse>(
+      `/sales/clients/${clientId}/products?includeInactive=true`,
+    )
+    return response.products
+  }, [])
+
+  const deactivateProduct: RfqContextType["deactivateProduct"] = useCallback(async (clientId, productId) => {
+    await fetchWithAuth(`/sales/clients/${clientId}/products/${productId}/deactivate`, {
+      method: "PATCH",
+    })
+    await loadClientProducts(clientId)
+  }, [loadClientProducts])
+
+  const activateProduct: RfqContextType["activateProduct"] = useCallback(async (clientId, productId) => {
+    await fetchWithAuth(`/sales/clients/${clientId}/products/${productId}/activate`, {
+      method: "PATCH",
     })
     await loadClientProducts(clientId)
   }, [loadClientProducts])
@@ -115,7 +140,7 @@ export const RfqProvider = ({ children }: { children: ReactNode }) => {
 
   return (
     <RfqContext.Provider
-      value={{ productsByClient, loadingByClient, errorsByClient, loadClientProducts, addProduct, cellsByClient, loadClientCells, saveCell, deleteCell, openAttachment }}
+      value={{ productsByClient, loadingByClient, errorsByClient, loadClientProducts, getAllClientProducts, addProduct, deactivateProduct, activateProduct, cellsByClient, loadClientCells, saveCell, deleteCell, openAttachment }}
     >
       {children}
     </RfqContext.Provider>

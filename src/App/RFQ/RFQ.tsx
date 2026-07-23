@@ -1,7 +1,8 @@
-import { useEffect, useState, type ClipboardEvent } from "react"
-import { FileText, Plus, Trash2, Upload, X } from "lucide-react"
+import { useCallback, useEffect, useState, type ClipboardEvent } from "react"
+import { FileText, Settings, Trash2, Upload, X } from "lucide-react"
 import { rfqSuppliers } from "../ClientsAndVegetables/suppliers"
 import { useRfq } from "../../Contexts/rfqContext"
+import ProductManagementModal from "./ProductManagementModal"
 
 type RfqSupplier = (typeof rfqSuppliers)[number]
 
@@ -77,7 +78,7 @@ type SelectedCell = {
 
 const RFQ = () => {
   const [selectedSupplier, setSelectedSupplier] = useState<RfqSupplier>(rfqSuppliers[0])
-  const { productsByClient, loadingByClient, errorsByClient, loadClientProducts, addProduct, cellsByClient, saveCell, deleteCell, openAttachment } = useRfq()
+  const { productsByClient, loadingByClient, errorsByClient, loadClientProducts, cellsByClient, saveCell, deleteCell, openAttachment } = useRfq()
   const [selectedCell, setSelectedCell] = useState<SelectedCell | null>(null)
   const [priceRows, setPriceRows] = useState([""])
   const [isEditingPrice, setIsEditingPrice] = useState(true)
@@ -86,9 +87,7 @@ const RFQ = () => {
   const [isSaving, setIsSaving] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
   const [saveError, setSaveError] = useState("")
-  const [newProductName, setNewProductName] = useState("")
-  const [isAddingProduct, setIsAddingProduct] = useState(false)
-  const [productError, setProductError] = useState("")
+  const [isManagingProducts, setIsManagingProducts] = useState(false)
   const products = productsByClient[selectedSupplier.id] ?? []
   const isLoading = loadingByClient[selectedSupplier.id]
   const error = errorsByClient[selectedSupplier.id]
@@ -125,6 +124,7 @@ const RFQ = () => {
   const activeSavedCell = selectedCell ? savedCells.find((cell) =>
     cell.product_id === selectedCell.productId && cell.week_start === selectedCell.weekStart && cell.location_code === selectedCell.locationCode,
   ) : undefined
+  const closeProductManagement = useCallback(() => setIsManagingProducts(false), [])
 
   const openCell = (cellSelection: SelectedCell) => {
     const cell = savedCells.find((item) =>
@@ -192,25 +192,6 @@ const RFQ = () => {
     }
   }
 
-  const handleAddProduct = async () => {
-    const name = newProductName.trim()
-    if (!name) {
-      setProductError("Indiquez le nom du produit.")
-      return
-    }
-
-    setIsAddingProduct(true)
-    setProductError("")
-    try {
-      await addProduct(selectedSupplier.id, name)
-      setNewProductName("")
-    } catch (error) {
-      setProductError(error instanceof Error ? error.message : "Impossible d’ajouter le produit.")
-    } finally {
-      setIsAddingProduct(false)
-    }
-  }
-
   return (
     <section className="mt-8 w-[min(1080px,calc(100%-1.5rem))] lg:w-[min(1440px,calc(100%-2rem))]">
       <div className="text-center">
@@ -231,8 +212,6 @@ const RFQ = () => {
               key={supplier.id}
               onClick={() => {
                 setSelectedSupplier(supplier)
-                setNewProductName("")
-                setProductError("")
               }}
               type="button"
             >
@@ -243,23 +222,16 @@ const RFQ = () => {
       </div>
 
       <div className="mt-6 rounded-lg border-2 border-secondary bg-white p-3 shadow-md sm:p-5">
-        <div className="mb-4 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+        <div className="mb-4 flex flex-wrap items-end justify-between gap-4">
           <div>
             <h3 className={`text-xl font-bold uppercase ${clientAccentColor}`}>
               {selectedSupplier.name}
             </h3>
             <p className={`text-sm font-bold ${clientAccentColor}`}>RFQ complétés</p>
           </div>
-          <form className="w-full lg:max-w-md" onSubmit={(event) => { event.preventDefault(); void handleAddProduct() }}>
-            <label className="text-sm font-bold" htmlFor="new-rfq-product">Ajouter un produit pour {selectedSupplier.name}</label>
-            <div className="mt-1 flex gap-2">
-              <input className="min-w-0 flex-1 rounded border border-gray-300 px-3 py-2" disabled={isAddingProduct} id="new-rfq-product" maxLength={150} onChange={(event) => setNewProductName(event.target.value)} placeholder="Nom du produit" value={newProductName} />
-              <button className="inline-flex cursor-pointer items-center gap-2 rounded bg-secondary px-4 py-2 font-bold text-white disabled:cursor-not-allowed disabled:opacity-50" disabled={isAddingProduct} type="submit">
-                <Plus size={18} /> {isAddingProduct ? "Ajout…" : "Ajouter"}
-              </button>
-            </div>
-            {productError && <p className="mt-1 text-sm text-red-700" role="alert">{productError}</p>}
-          </form>
+          <button className="inline-flex cursor-pointer items-center gap-2 rounded border border-secondary px-4 py-2 text-sm font-bold text-secondary transition hover:bg-secondary/10" onClick={() => setIsManagingProducts(true)} type="button">
+            <Settings size={18} /> { isMetro ?  "Gérer les produits (Metro)" : isSobeys ? "Gérer les produits (Sobeys)" : "Gérer les produits (Loblaws)"}
+          </button>
         </div>
 
         {isLoading ? (
@@ -398,6 +370,14 @@ const RFQ = () => {
           </p>
         )}
       </div>
+
+      {isManagingProducts && (
+        <ProductManagementModal
+          clientId={selectedSupplier.id}
+          clientName={selectedSupplier.name}
+          onClose={closeProductManagement}
+        />
+      )}
 
       {selectedCell && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/55 p-4" onMouseDown={(event) => event.target === event.currentTarget && setSelectedCell(null)} role="presentation">
