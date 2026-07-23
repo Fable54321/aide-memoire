@@ -77,7 +77,7 @@ const RFQ = () => {
   const [selectedSupplier, setSelectedSupplier] = useState<RfqSupplier>(rfqSuppliers[0])
   const { productsByClient, loadingByClient, errorsByClient, loadClientProducts, cellsByClient, saveCell, openAttachment } = useRfq()
   const [selectedCell, setSelectedCell] = useState<SelectedCell | null>(null)
-  const [priceRows, setPriceRows] = useState([{ quantity: "", price: "" }])
+  const [priceRows, setPriceRows] = useState([""])
   const [cellStatus, setCellStatus] = useState<"final" | "email">("email")
   const [files, setFiles] = useState<File[]>([])
   const [isSaving, setIsSaving] = useState(false)
@@ -123,7 +123,7 @@ const RFQ = () => {
     const cell = savedCells.find((item) =>
       item.product_id === cellSelection.productId && item.week_start === cellSelection.weekStart && item.location_code === cellSelection.locationCode,
     )
-    setPriceRows(cell?.prices.length ? cell.prices.map((item) => ({ quantity: String(item.quantity), price: String(item.price) })) : [{ quantity: "", price: "" }])
+    setPriceRows(cell?.prices.length ? cell.prices.map((item) => String(item.price)) : [""])
     setCellStatus(cell?.status ?? "email")
     setFiles([])
     setSaveError("")
@@ -139,12 +139,12 @@ const RFQ = () => {
 
   const handleSave = async () => {
     if (!selectedCell) return
-    const parsedPrices = priceRows.filter((row) => row.quantity || row.price).map((row) => ({
-      quantity: Number(row.quantity.replace(",", ".")),
-      price: Number(row.price.replace(",", ".")),
+    const parsedPrices = priceRows.filter((row) => row.trim()).map((row) => ({
+      quantity: 1,
+      price: Number(row.trim().replace(",", ".")),
     }))
     if (!parsedPrices.length || parsedPrices.some((row) => !Number.isFinite(row.quantity) || row.quantity <= 0 || !Number.isFinite(row.price) || row.price < 0)) {
-      setSaveError("Indiquez une quantité et un prix valides pour chaque ligne.")
+      setSaveError("Indiquez un montant valide (ex. 25).")
       return
     }
     setIsSaving(true)
@@ -345,12 +345,9 @@ const RFQ = () => {
                   </label>
                 </div>
               </fieldset>
-              <div className="grid grid-cols-2 gap-2 text-sm font-bold"><span>Quantité</span><span>Prix</span></div>
+              <div className="text-sm font-bold">Prix($)/Qté(boîtes, palettes etc ...)</div>
               {priceRows.map((row, index) => (
-                <div className="grid grid-cols-2 gap-2" key={index}>
-                  <input aria-label={`Quantité ${index + 1}`} className="rounded border border-gray-300 px-3 py-2" inputMode="decimal" onChange={(event) => setPriceRows((current) => current.map((item, rowIndex) => rowIndex === index ? { ...item, quantity: event.target.value } : item))} placeholder="ex. 100" value={row.quantity} />
-                  <input aria-label={`Prix ${index + 1}`} className="rounded border border-gray-300 px-3 py-2" inputMode="decimal" onChange={(event) => setPriceRows((current) => current.map((item, rowIndex) => rowIndex === index ? { ...item, price: event.target.value } : item))} placeholder="ex. 12,50" value={row.price} />
-                </div>
+                <input aria-label={`Prix/Qté ${index + 1}`} className="w-full rounded border border-gray-300 px-3 py-2" inputMode="decimal" key={index} onChange={(event) => setPriceRows((current) => current.map((item, rowIndex) => rowIndex === index ? event.target.value : item))} placeholder="ex. 25" value={row} />
               ))}
             </div>
 
