@@ -93,7 +93,7 @@ const ProductManagementModal = ({ clientId, clientName, onClose }: ProductManage
         <div className="flex items-start justify-between gap-4">
           <div>
             <h3 className="text-xl font-bold text-secondary" id="product-management-title">Gérer les produits</h3>
-            <p className="text-sm text-gray-600">{clientName}</p>
+            <p className="text-2xl font-bold ">{clientName}</p>
           </div>
           <button aria-label="Fermer" className="cursor-pointer rounded p-1 hover:bg-gray-100" onClick={onClose} type="button"><X /></button>
         </div>
