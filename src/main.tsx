@@ -9,13 +9,20 @@ import { VegetablesProvider } from './Contexts/vegetablesContext'
 import { SalesProvider } from './Contexts/salesContext'
 import { RfqProvider } from './Contexts/rfqContext'
 import { AuthProvider } from './Contexts/AuthContext'
+import ProtectedRoute from './Components/ProtectedRoute'
 
 
 
 const router = createBrowserRouter([
   {
     path: '/',
-    element: <App />,
+    element: 
+    (
+      <ProtectedRoute>
+    <App />
+    </ProtectedRoute>
+  )
+    ,
     children: [
       {
         index: true,
