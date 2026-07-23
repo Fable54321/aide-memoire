@@ -57,6 +57,8 @@ const formatWeekRange = (start: Date, end: Date) => {
   return `${start.getDate()} ${monthNames[start.getMonth()]} au ${end.getDate()} ${monthNames[end.getMonth()]}`
 }
 
+const formatShortDate = (date: Date) => `${date.getDate()} ${monthNames[date.getMonth()]}`
+
 const formatDateKey = (date: Date) => {
   const year = date.getFullYear()
   const month = String(date.getMonth() + 1).padStart(2, "0")
@@ -97,20 +99,20 @@ const RFQ = () => {
     : isSobeys
       ? sobeysLocations
       : loblawsLocations
-  const weeks = Array.from({ length: isMetro ? 12 : isSobeys ? 6 : 8 }, (_, index) => {
+  const weeks = Array.from({ length: isMetro ? 13 : isSobeys ? 6 : 8 }, (_, index) => {
     const start = addDays(getMonday(new Date()), index * 7)
     const end = addDays(start, 6)
     return {
       start: formatDateKey(start),
-      number: getIsoWeek(start),
+      number: isMetro ?  getIsoWeek(start) -1 : getIsoWeek(start),
+      startLabel: formatShortDate(isMetro ? addDays(start, -1) : start),
+      endLabel: formatShortDate(isMetro ? addDays(start, 7) : end),
       title: isSobeys
         ? `SF ${addDays(end, 4).getDate()} ${monthNames[addDays(end, 4).getMonth()]}`
         : isMetro
           ? null
           : `SE ${getIsoWeek(start)}`,
-      label: isMetro
-        ? `${start.getDate()} ${monthNames[start.getMonth()]}`
-        : formatWeekRange(start, end),
+      label: formatWeekRange(start, end),
     }
   })
   const alternateWeekColor = isMetro
@@ -291,14 +293,23 @@ const RFQ = () => {
                         key={`${week.number}-${weekIndex}`}
                         scope="colgroup"
                       >
-                        {week.title && (
-                          <span className="block text-base font-extrabold">{week.title}</span>
+                        {isMetro ? (
+                          <>
+                            <span className="block text-sm font-extrabold leading-tight">Sem</span>
+                            <span className="block text-base font-extrabold leading-tight">{week.number}</span>
+                            <span className="mt-1 block whitespace-nowrap text-[10px] font-bold leading-tight">{week.startLabel}</span>
+                            <span className="block whitespace-nowrap text-[10px] font-bold leading-tight">{week.endLabel}</span>
+                          </>
+                        ) : (
+                          <>
+                            {week.title && (
+                              <span className="block text-base font-extrabold">{week.title}</span>
+                            )}
+                            <span className="block whitespace-nowrap text-[10px] font-bold">
+                              {week.label}
+                            </span>
+                          </>
                         )}
-                        <span
-                          className={`block whitespace-nowrap font-bold ${isMetro ? "text-xs" : "text-[10px]"}`}
-                        >
-                          {week.label}
-                        </span>
                       </th>
                     ))}
                   </tr>
