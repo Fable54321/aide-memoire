@@ -354,13 +354,23 @@ const RFQ = () => {
                           >
                             <button
                               className={`h-full min-h-6 w-full cursor-pointer transition hover:bg-primary/35 focus:outline-2 focus:outline-secondary lg:min-h-8 ${
-                                savedCells.some((cell) => cell.product_id === product.id && cell.week_start === week.start && cell.location_code === location.code) ? "bg-secondary/35" : ""
+                                savedCells.some((cell) => cell.product_id === product.id && cell.week_start === week.start && cell.location_code === location.code && cell.status === "final") ? "bg-[#4C1CC6]" :
+                                savedCells.some((cell) => cell.product_id === product.id && cell.week_start === week.start && cell.location_code === location.code && cell.status === "email") ? "bg-primary" : ""
                               }`}
                               onClick={() => openCell({ productId: product.id, productName: product.name, weekStart: week.start, weekLabel: week.label, locationCode: location.code, locationName: location.name })}
                               title={`Modifier ${product.name}, ${week.label}, ${location.name}`}
                               type="button"
                             >
-                              <span aria-hidden="true" className="text-base font-black leading-none lg:text-xl">
+                              <span
+                                aria-hidden="true"
+                                className={`inline-flex h-5 w-5 items-center justify-center rounded text-base font-black leading-none lg:h-7 lg:w-7 lg:text-xl ${
+                                  savedCells.find((cell) => cell.product_id === product.id && cell.week_start === week.start && cell.location_code === location.code)?.status === "final"
+                                    ? "bg-primary  text-white"
+                                    : savedCells.find((cell) => cell.product_id === product.id && cell.week_start === week.start && cell.location_code === location.code)?.status === "email"
+                                      ? "bg-[#4C1CC6] text-white"
+                                      : ""
+                                }`}
+                              >
                                 {savedCells.find((cell) => cell.product_id === product.id && cell.week_start === week.start && cell.location_code === location.code)?.status === "final" ? "X" :
                                   savedCells.find((cell) => cell.product_id === product.id && cell.week_start === week.start && cell.location_code === location.code)?.status === "email" ? "C" : ""}
                               </span>
