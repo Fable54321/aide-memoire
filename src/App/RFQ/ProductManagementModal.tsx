@@ -138,7 +138,7 @@ const ProductList = ({ title, products, inactive = false, pendingProductId, onTo
       <div className="mt-2 space-y-2">
         {products.map((product) => (
           <div className={`flex items-center justify-between gap-3 rounded border px-3 py-2 ${inactive ? "border-gray-200 bg-gray-50 text-gray-600" : "border-green-200 bg-green-50"}`} key={product.id}>
-            <span className="min-w-0 break-words font-medium">{product.name}</span>
+            <span className="min-w-0 wrap-break-word font-medium">{product.name}</span>
             <button className={`inline-flex shrink-0 cursor-pointer items-center gap-1 rounded px-2 py-1 text-xs font-bold disabled:cursor-not-allowed disabled:opacity-50 ${inactive ? "border border-secondary bg-white text-secondary hover:bg-secondary/10" : "border border-red-300 bg-white text-red-700 hover:bg-red-50"}`} disabled={pendingProductId !== null} onClick={() => void onToggle(product)} type="button">
               {inactive ? <><RotateCcw size={14} /> Réactiver</> : <><PowerOff size={14} /> Désactiver</>}
             </button>
