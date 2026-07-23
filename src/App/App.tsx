@@ -3,7 +3,7 @@ import { NavLink, Outlet } from "react-router-dom"
 
 const App = () => {
   return (
-    <article className="font-tertiary flex flex-col justify-center items-center mt-5">
+    <article className="font-tertiary flex flex-col justify-center items-center mt-5" translate="no">
       <h1 className="text-4xl font-bold text-center" >Aide-mémoire devis</h1>
       <nav className="mt-4 flex gap-2" aria-label="Sections principales">
         <NavLink
