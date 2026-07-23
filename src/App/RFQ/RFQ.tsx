@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react"
-import { FileText, Upload, X } from "lucide-react"
+import { useEffect, useState, type ClipboardEvent } from "react"
+import { FileText, Trash2, Upload, X } from "lucide-react"
 import { rfqSuppliers } from "../ClientsAndVegetables/suppliers"
 import { useRfq } from "../../Contexts/rfqContext"
 
@@ -75,12 +75,14 @@ type SelectedCell = {
 
 const RFQ = () => {
   const [selectedSupplier, setSelectedSupplier] = useState<RfqSupplier>(rfqSuppliers[0])
-  const { productsByClient, loadingByClient, errorsByClient, loadClientProducts, cellsByClient, saveCell, openAttachment } = useRfq()
+  const { productsByClient, loadingByClient, errorsByClient, loadClientProducts, cellsByClient, saveCell, deleteCell, openAttachment } = useRfq()
   const [selectedCell, setSelectedCell] = useState<SelectedCell | null>(null)
   const [priceRows, setPriceRows] = useState([""])
+  const [isEditingPrice, setIsEditingPrice] = useState(true)
   const [cellStatus, setCellStatus] = useState<"final" | "email">("email")
   const [files, setFiles] = useState<File[]>([])
   const [isSaving, setIsSaving] = useState(false)
+  const [isDeleting, setIsDeleting] = useState(false)
   const [saveError, setSaveError] = useState("")
   const products = productsByClient[selectedSupplier.id] ?? []
   const isLoading = loadingByClient[selectedSupplier.id]
@@ -124,6 +126,7 @@ const RFQ = () => {
       item.product_id === cellSelection.productId && item.week_start === cellSelection.weekStart && item.location_code === cellSelection.locationCode,
     )
     setPriceRows(cell?.prices.length ? cell.prices.map((item) => String(item.price)) : [""])
+    setIsEditingPrice(!cell?.prices.length)
     setCellStatus(cell?.status ?? "email")
     setFiles([])
     setSaveError("")
@@ -155,6 +158,33 @@ const RFQ = () => {
     } catch (error) {
       setSaveError(error instanceof Error ? error.message : "Impossible d’enregistrer.")
     } finally { setIsSaving(false) }
+  }
+
+  const handleImagePaste = (event: ClipboardEvent<HTMLDivElement>) => {
+    const pastedImages = Array.from(event.clipboardData.items)
+      .filter((item) => item.kind === "file" && item.type.startsWith("image/"))
+      .map((item) => item.getAsFile())
+      .filter((file): file is File => file !== null)
+
+    if (!pastedImages.length) return
+
+    event.preventDefault()
+    setFiles((current) => [...current, ...pastedImages])
+  }
+
+  const handleDelete = async () => {
+    if (!activeSavedCell || !window.confirm("Supprimer définitivement cette entrée RFQ?")) return
+
+    setIsDeleting(true)
+    setSaveError("")
+    try {
+      await deleteCell(activeSavedCell.id, selectedSupplier.id)
+      setSelectedCell(null)
+    } catch (error) {
+      setSaveError(error instanceof Error ? error.message : "Impossible de supprimer l’entrée.")
+    } finally {
+      setIsDeleting(false)
+    }
   }
 
   return (
@@ -283,7 +313,7 @@ const RFQ = () => {
                               title={`Modifier ${product.name}, ${week.label}, ${location.name}`}
                               type="button"
                             >
-                              <span aria-hidden="true" className="font-black leading-none">
+                              <span aria-hidden="true" className="text-base font-black leading-none lg:text-xl">
                                 {savedCells.find((cell) => cell.product_id === product.id && cell.week_start === week.start && cell.location_code === location.code)?.status === "final" ? "X" :
                                   savedCells.find((cell) => cell.product_id === product.id && cell.week_start === week.start && cell.location_code === location.code)?.status === "email" ? "C" : ""}
                               </span>
@@ -322,7 +352,7 @@ const RFQ = () => {
 
       {selectedCell && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/55 p-4" onMouseDown={(event) => event.target === event.currentTarget && setSelectedCell(null)} role="presentation">
-          <div aria-labelledby="rfq-dialog-title" aria-modal="true" className="max-h-[90vh] w-full max-w-xl overflow-y-auto rounded-xl bg-white p-5 shadow-2xl" role="dialog">
+          <div aria-labelledby="rfq-dialog-title" aria-modal="true" className="max-h-[90vh] w-full max-w-xl overflow-y-auto rounded-xl bg-white p-5 shadow-2xl" onPaste={handleImagePaste} role="dialog">
             <div className="flex items-start justify-between gap-4">
               <div>
                 <h3 className="text-xl font-bold text-secondary" id="rfq-dialog-title">{selectedCell.productName}</h3>
@@ -345,14 +375,24 @@ const RFQ = () => {
                   </label>
                 </div>
               </fieldset>
-              <div className="text-sm font-bold">Prix($)/Qté(boîtes, palettes etc ...)</div>
-              {priceRows.map((row, index) => (
-                <input aria-label={`Prix/Qté ${index + 1}`} className="w-full rounded border border-gray-300 px-3 py-2" inputMode="decimal" key={index} onChange={(event) => setPriceRows((current) => current.map((item, rowIndex) => rowIndex === index ? event.target.value : item))} placeholder="ex. 25" value={row} />
-              ))}
+              <div className="text-sm font-bold"><span className="text-[1.2rem]">PRIX</span>($) par <span className="text-[1.2rem]">QTÉ</span>(boîtes, palettes etc ...)</div>
+              {(activeSavedCell?.prices.length ?? 0) > 0 && !isEditingPrice ? (
+                <div className="flex items-center justify-between gap-3 rounded-lg border border-green-300 bg-green-50 px-4 py-3">
+                  <span className="text-lg font-bold text-green-900">{priceRows[0]} $</span>
+                  <button className="cursor-pointer rounded border border-green-700 bg-white px-3 py-1.5 text-sm font-bold text-green-800 transition hover:bg-green-100" onClick={() => setIsEditingPrice(true)} type="button">
+                    Modifier
+                  </button>
+                </div>
+              ) : (
+                priceRows.map((row, index) => (
+                  <input aria-label={`Prix/Qté ${index + 1}`} autoFocus={(activeSavedCell?.prices.length ?? 0) > 0} className="w-full rounded border border-gray-300 px-3 py-2" inputMode="decimal" key={index} onChange={(event) => setPriceRows((current) => current.map((item, rowIndex) => rowIndex === index ? event.target.value : item))} placeholder="ex. 25" value={row} />
+                ))
+              )}
             </div>
 
             <div className="mt-6 border-t pt-4">
               <p className="text-sm font-bold">Capture d’écran ou document</p>
+              <p className="mt-1 text-xs text-gray-600">Collez une image ici avec Ctrl+V ou Cmd+V.</p>
               <label className="mt-2 inline-flex cursor-pointer items-center gap-2 rounded-lg border border-secondary px-4 py-2 text-sm font-bold text-secondary transition hover:bg-secondary/10" htmlFor="rfq-files">
                 <Upload size={17} /> Choisir des fichiers
               </label>
@@ -369,9 +409,18 @@ const RFQ = () => {
             </div>
 
             {saveError && <p className="mt-4 text-sm text-red-700" role="alert">{saveError}</p>}
-            <div className="mt-6 flex justify-end gap-3">
-              <button className="cursor-pointer rounded border border-gray-300 px-4 py-2" onClick={() => setSelectedCell(null)} type="button">Annuler</button>
-              <button className="cursor-pointer rounded bg-secondary px-5 py-2 font-bold text-white disabled:opacity-50" disabled={isSaving} onClick={() => void handleSave()} type="button">{isSaving ? "Enregistrement…" : "Enregistrer"}</button>
+            <div className="mt-6 flex flex-wrap items-center justify-between gap-3">
+              <div>
+                {activeSavedCell && (
+                  <button className="inline-flex cursor-pointer items-center gap-2 rounded border border-red-600 px-4 py-2 font-bold text-red-700 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50" disabled={isDeleting || isSaving} onClick={() => void handleDelete()} type="button">
+                    <Trash2 size={17} /> {isDeleting ? "Suppression…" : "Supprimer"}
+                  </button>
+                )}
+              </div>
+              <div className="flex gap-3">
+                <button className="cursor-pointer rounded border border-gray-300 px-4 py-2" disabled={isDeleting} onClick={() => setSelectedCell(null)} type="button">Annuler</button>
+                <button className="cursor-pointer rounded bg-secondary px-5 py-2 font-bold text-white disabled:opacity-50" disabled={isSaving || isDeleting} onClick={() => void handleSave()} type="button">{isSaving ? "Enregistrement…" : "Enregistrer"}</button>
+              </div>
             </div>
           </div>
         </div>

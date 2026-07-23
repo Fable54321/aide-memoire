@@ -40,6 +40,7 @@ type RfqContextType = {
   cellsByClient: Record<number, RfqCell[]>
   loadClientCells: (clientId: number) => Promise<void>
   saveCell: (data: { clientId: number; productId: number; weekStart: string; locationCode: string; status: "final" | "email"; prices: Array<{ quantity: number; price: number }>; files: File[] }) => Promise<void>
+  deleteCell: (cellId: number, clientId: number) => Promise<void>
   openAttachment: (attachmentId: number) => Promise<void>
 }
 
@@ -86,6 +87,11 @@ export const RfqProvider = ({ children }: { children: ReactNode }) => {
     await loadClientCells(data.clientId)
   }, [loadClientCells])
 
+  const deleteCell: RfqContextType["deleteCell"] = useCallback(async (cellId, clientId) => {
+    await fetchWithAuth(`/sales/rfq-cells/${cellId}`, { method: "DELETE" })
+    await loadClientCells(clientId)
+  }, [loadClientCells])
+
   const openAttachment = useCallback(async (attachmentId: number) => {
     const { url } = await fetchWithAuth<{ url: string }>(`/sales/rfq-attachments/${attachmentId}`)
     window.open(url, "_blank", "noopener,noreferrer")
@@ -100,7 +106,7 @@ export const RfqProvider = ({ children }: { children: ReactNode }) => {
 
   return (
     <RfqContext.Provider
-      value={{ productsByClient, loadingByClient, errorsByClient, loadClientProducts, cellsByClient, loadClientCells, saveCell, openAttachment }}
+      value={{ productsByClient, loadingByClient, errorsByClient, loadClientProducts, cellsByClient, loadClientCells, saveCell, deleteCell, openAttachment }}
     >
       {children}
     </RfqContext.Provider>
