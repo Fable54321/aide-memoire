@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState, type ClipboardEvent } from "react"
 import { FileText, Settings, Trash2, Upload, X } from "lucide-react"
 import { rfqSuppliers } from "../ClientsAndVegetables/suppliers"
 import { useRfq } from "../../Contexts/rfqContext"
+import AttachmentPreviewModal from "./AttachmentPreviewModal"
 import ProductManagementModal from "./ProductManagementModal"
 
 type RfqSupplier = (typeof rfqSuppliers)[number]
@@ -87,7 +88,9 @@ const RFQ = () => {
   const [isSaving, setIsSaving] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
   const [saveError, setSaveError] = useState("")
+  const [allowSaveWithoutPrice, setAllowSaveWithoutPrice] = useState(false)
   const [isManagingProducts, setIsManagingProducts] = useState(false)
+  const [previewAttachment, setPreviewAttachment] = useState<{ id: number; fileName: string } | null>(null)
   const products = productsByClient[selectedSupplier.id] ?? []
   const isLoading = loadingByClient[selectedSupplier.id]
   const error = errorsByClient[selectedSupplier.id]
@@ -125,6 +128,7 @@ const RFQ = () => {
     cell.product_id === selectedCell.productId && cell.week_start === selectedCell.weekStart && cell.location_code === selectedCell.locationCode,
   ) : undefined
   const closeProductManagement = useCallback(() => setIsManagingProducts(false), [])
+  const closeAttachmentPreview = useCallback(() => setPreviewAttachment(null), [])
 
   const openCell = (cellSelection: SelectedCell) => {
     const cell = savedCells.find((item) =>
@@ -135,15 +139,16 @@ const RFQ = () => {
     setCellStatus(cell?.status ?? "email")
     setFiles([])
     setSaveError("")
+    setAllowSaveWithoutPrice(false)
     setSelectedCell(cellSelection)
   }
 
   useEffect(() => {
     if (!selectedCell) return
-    const close = (event: KeyboardEvent) => event.key === "Escape" && setSelectedCell(null)
+    const close = (event: KeyboardEvent) => event.key === "Escape" && !previewAttachment && setSelectedCell(null)
     window.addEventListener("keydown", close)
     return () => window.removeEventListener("keydown", close)
-  }, [selectedCell])
+  }, [previewAttachment, selectedCell])
 
   const handleSave = async () => {
     if (!selectedCell) return
@@ -151,8 +156,13 @@ const RFQ = () => {
       quantity: 1,
       price: Number(row.trim().replace(",", ".")),
     }))
-    if (!parsedPrices.length || parsedPrices.some((row) => !Number.isFinite(row.quantity) || row.quantity <= 0 || !Number.isFinite(row.price) || row.price < 0)) {
+    if (parsedPrices.some((row) => !Number.isFinite(row.quantity) || row.quantity <= 0 || !Number.isFinite(row.price) || row.price < 0)) {
       setSaveError("Indiquez un montant valide (ex. 25).")
+      return
+    }
+    if (!parsedPrices.length && !allowSaveWithoutPrice) {
+      setSaveError("")
+      setAllowSaveWithoutPrice(true)
       return
     }
     setIsSaving(true)
@@ -414,20 +424,30 @@ const RFQ = () => {
                 </div>
               ) : (
                 priceRows.map((row, index) => (
-                  <input aria-label={`Prix/Qté ${index + 1}`} autoFocus={(activeSavedCell?.prices.length ?? 0) > 0} className="w-full rounded border border-gray-300 px-3 py-2" inputMode="decimal" key={index} onChange={(event) => setPriceRows((current) => current.map((item, rowIndex) => rowIndex === index ? event.target.value : item))} placeholder="ex. 25" value={row} />
+                  <input aria-label={`Prix/Qté ${index + 1}`} autoFocus={(activeSavedCell?.prices.length ?? 0) > 0} className="w-full rounded border border-gray-300 px-3 py-2" inputMode="decimal" key={index} onChange={(event) => { setPriceRows((current) => current.map((item, rowIndex) => rowIndex === index ? event.target.value : item)); setAllowSaveWithoutPrice(false) }} placeholder="ex. 25" value={row} />
                 ))
               )}
             </div>
 
             <div className="mt-6 border-t pt-4">
               <p className="text-sm font-bold">Capture d’écran ou document</p>
-              <p className="mt-1 text-xs text-gray-600">Collez une image ici avec Ctrl+V.</p>
+              <p className="mt-1 text-xs text-gray-600">Ajoutez une image avec Ctrl+V, Cmd+V ou par clic droit.</p>
+              <div
+                aria-label="Zone de collage d’image"
+                className="mt-2 min-h-14 cursor-text rounded-lg border-2 border-dashed border-gray-300 bg-gray-50 px-3 py-4 text-center text-sm text-gray-600 outline-none transition focus:border-secondary focus:bg-secondary/5"
+                contentEditable
+                onInput={(event) => { event.currentTarget.textContent = "Clic droit ici, puis Coller" }}
+                role="textbox"
+                suppressContentEditableWarning
+              >
+                Clic droit ici, puis Coller
+              </div>
               <label className="mt-2 inline-flex cursor-pointer items-center gap-2 rounded-lg border border-secondary px-4 py-2 text-sm font-bold text-secondary transition hover:bg-secondary/10" htmlFor="rfq-files">
                 <Upload size={17} /> Choisir des fichiers
               </label>
               <input accept="image/*,.pdf,.doc,.docx,.xls,.xlsx" className="sr-only" id="rfq-files" multiple onChange={(event) => setFiles(Array.from(event.target.files ?? []))} type="file" />
               {(activeSavedCell?.attachments.length ?? 0) > 0 && <div className="mt-3 space-y-1">{activeSavedCell?.attachments.map((attachment) => (
-                <button className="flex cursor-pointer items-center gap-2 text-left text-sm text-secondary underline" key={attachment.id} onClick={() => void openAttachment(attachment.id)} type="button"><FileText size={16} />{attachment.file_name}</button>
+                <button className="flex cursor-pointer items-center gap-2 text-left text-sm text-secondary underline" key={attachment.id} onClick={() => attachment.content_type.startsWith("image/") ? setPreviewAttachment({ id: attachment.id, fileName: attachment.file_name }) : void openAttachment(attachment.id)} type="button"><FileText size={16} />{attachment.file_name}</button>
               ))}</div>}
               {files.length > 0 && (
                 <div className="mt-2 space-y-1 text-xs text-gray-600">
@@ -438,6 +458,11 @@ const RFQ = () => {
             </div>
 
             {saveError && <p className="mt-4 text-sm text-red-700" role="alert">{saveError}</p>}
+            {allowSaveWithoutPrice && (
+              <p className="mt-4 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900" role="status">
+                Aucun prix n’est indiqué. Enregistrer sans prix ?
+              </p>
+            )}
             <div className="mt-6 flex flex-wrap items-center justify-between gap-3">
               <div>
                 {activeSavedCell && (
@@ -448,11 +473,15 @@ const RFQ = () => {
               </div>
               <div className="flex gap-3">
                 <button className="cursor-pointer rounded border border-gray-300 px-4 py-2" disabled={isDeleting} onClick={() => setSelectedCell(null)} type="button">Annuler</button>
-                <button className="cursor-pointer rounded bg-secondary px-5 py-2 font-bold text-white disabled:opacity-50" disabled={isSaving || isDeleting} onClick={() => void handleSave()} type="button">{isSaving ? "Enregistrement…" : "Enregistrer"}</button>
+                <button className="cursor-pointer rounded bg-secondary px-5 py-2 font-bold text-white disabled:opacity-50" disabled={isSaving || isDeleting} onClick={() => void handleSave()} type="button">{isSaving ? "Enregistrement…" : allowSaveWithoutPrice ? "Enregistrer sans prix" : "Enregistrer"}</button>
               </div>
             </div>
           </div>
         </div>
+      )}
+
+      {previewAttachment && (
+        <AttachmentPreviewModal attachment={previewAttachment} onClose={closeAttachmentPreview} />
       )}
     </section>
   )

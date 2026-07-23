@@ -46,6 +46,7 @@ type RfqContextType = {
   loadClientCells: (clientId: number) => Promise<void>
   saveCell: (data: { clientId: number; productId: number; weekStart: string; locationCode: string; status: "final" | "email"; prices: Array<{ quantity: number; price: number }>; files: File[] }) => Promise<void>
   deleteCell: (cellId: number, clientId: number) => Promise<void>
+  getAttachmentUrl: (attachmentId: number) => Promise<string>
   openAttachment: (attachmentId: number) => Promise<void>
 }
 
@@ -126,10 +127,15 @@ export const RfqProvider = ({ children }: { children: ReactNode }) => {
     await loadClientCells(clientId)
   }, [loadClientCells])
 
-  const openAttachment = useCallback(async (attachmentId: number) => {
+  const getAttachmentUrl = useCallback(async (attachmentId: number) => {
     const { url } = await fetchWithAuth<{ url: string }>(`/sales/rfq-attachments/${attachmentId}`)
-    window.open(url, "_blank", "noopener,noreferrer")
+    return url
   }, [])
+
+  const openAttachment = useCallback(async (attachmentId: number) => {
+    const url = await getAttachmentUrl(attachmentId)
+    window.open(url, "_blank", "noopener,noreferrer")
+  }, [getAttachmentUrl])
 
   useEffect(() => {
     rfqSuppliers.forEach(({ id }) => {
@@ -140,7 +146,7 @@ export const RfqProvider = ({ children }: { children: ReactNode }) => {
 
   return (
     <RfqContext.Provider
-      value={{ productsByClient, loadingByClient, errorsByClient, loadClientProducts, getAllClientProducts, addProduct, deactivateProduct, activateProduct, cellsByClient, loadClientCells, saveCell, deleteCell, openAttachment }}
+      value={{ productsByClient, loadingByClient, errorsByClient, loadClientProducts, getAllClientProducts, addProduct, deactivateProduct, activateProduct, cellsByClient, loadClientCells, saveCell, deleteCell, getAttachmentUrl, openAttachment }}
     >
       {children}
     </RfqContext.Provider>
