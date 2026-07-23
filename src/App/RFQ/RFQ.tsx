@@ -458,7 +458,7 @@ const RFQ = () => {
 
             <div className="mt-6 border-t pt-4">
               <p className="text-sm font-bold">Capture d’écran ou document</p>
-              <p className="mt-1 text-xs text-gray-600">Ajoutez une image avec Ctrl+V, ou par clic droit.</p>
+              <p className="mt-1 text-xs text-gray-600">Ajoutez une image avec Ctrl+V ou par clic droit.</p>
               <div
                 aria-label="Zone de collage d’image"
                 className="mt-2 min-h-14 cursor-text rounded-lg border-2 border-dashed border-gray-300 bg-gray-50 px-3 py-4 text-center text-sm text-gray-600 outline-none transition focus:border-secondary focus:bg-secondary/5"
