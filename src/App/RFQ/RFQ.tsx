@@ -44,6 +44,8 @@ const getMonday = (date: Date) => {
   return addDays(date, 1 - day)
 }
 
+const getSunday = (date: Date) => addDays(date, -date.getDay())
+
 const getIsoWeek = (date: Date) => {
   const target = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()))
   const day = target.getUTCDay() || 7
@@ -111,7 +113,7 @@ const RFQ = () => {
       ? sobeysLocations
       : loblawsLocations
   const weeks = Array.from({ length: isMetro ? 13 : isSobeys ? 6 : 8 }, (_, index) => {
-    const start = addDays(getMonday(new Date()), index * 7)
+    const start = addDays(isSobeys ? getSunday(new Date()) : getMonday(new Date()), index * 7)
     const end = addDays(start, 6)
     return {
       start: formatDateKey(start),
