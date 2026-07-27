@@ -257,9 +257,21 @@ const RFQ = () => {
             </h3>
             <p className={`text-sm font-bold ${clientAccentColor}`}>RFQ complétés</p>
           </div>
-          <button className="inline-flex cursor-pointer items-center gap-2 rounded border border-secondary px-4 py-2 text-sm font-bold text-secondary transition hover:bg-secondary/10" onClick={() => setIsManagingProducts(true)} type="button">
-            <Settings size={18} /> { isMetro ?  "Gérer les produits (Metro)" : isSobeys ? "Gérer les produits (Sobeys)" : "Gérer les produits (Loblaws)"}
-          </button>
+          <div className="flex flex-wrap items-center justify-end gap-4">
+            <div className="flex flex-wrap items-center gap-3 text-xs font-bold" aria-label="Légende des prix">
+              <span className="inline-flex items-center gap-1.5">
+                <span className="h-4 w-4 rounded-sm bg-primary" aria-hidden="true" />
+                Prix final
+              </span>
+              <span className="inline-flex items-center gap-1.5">
+                <span className="h-4 w-4 rounded-sm bg-[#4C1CC6]" aria-hidden="true" />
+                Prix par courriel
+              </span>
+            </div>
+            <button className="inline-flex cursor-pointer items-center gap-2 rounded border border-secondary px-4 py-2 text-sm font-bold text-secondary transition hover:bg-secondary/10" onClick={() => setIsManagingProducts(true)} type="button">
+              <Settings size={18} /> { isMetro ?  "Gérer les produits (Metro)" : isSobeys ? "Gérer les produits (Sobeys)" : "Gérer les produits (Loblaws)"}
+            </button>
+          </div>
         </div>
 
         {isLoading ? (
@@ -344,42 +356,51 @@ const RFQ = () => {
                         {product.name}
                       </th>
                       {weeks.flatMap((week, weekIndex) =>
-                        locations.map((location, locationIndex) => (
-                          <td
-                            aria-label={`${product.name}, semaine ${week.number}, ${location.name}`}
-                            className={`h-6 w-6 min-w-6 border-y border-black/60 lg:h-8 lg:w-8 lg:min-w-8 ${
-                              locationIndex === 0 ? "border-l-2 border-l-black" : "border-l border-l-black/40"
-                            } ${locationIndex === locations.length - 1 ? "border-r-2 border-r-black" : ""} ${
-                              weekIndex % 2 === 0 ? alternateWeekColor : "bg-white"
-                            }`}
-                            key={`${product.id}-${week.number}-${weekIndex}-${location.code}`}
-                          >
-                            <button
-                              className={`h-full min-h-6 w-full cursor-pointer transition hover:bg-primary/35 focus:outline-2 focus:outline-secondary lg:min-h-8 ${
-                                savedCells.some((cell) => cell.product_id === product.id && cell.week_start === week.start && cell.location_code === location.code && cell.status === "final") ? "bg-[#4C1CC6]" :
-                                savedCells.some((cell) => cell.product_id === product.id && cell.week_start === week.start && cell.location_code === location.code && cell.status === "email") ? "bg-primary" : ""
+                        locations.map((location, locationIndex) => {
+                          const savedCell = savedCells.find((cell) =>
+                            cell.product_id === product.id &&
+                            cell.week_start === week.start &&
+                            cell.location_code === location.code
+                          )
+                          const displayedPrice = savedCell?.prices[0]?.price
+
+                          return (
+                            <td
+                              aria-label={`${product.name}, semaine ${week.number}, ${location.name}`}
+                              className={`h-6 w-6 min-w-6 border-y border-black/60 lg:h-8 lg:w-8 lg:min-w-8 ${
+                                locationIndex === 0 ? "border-l-2 border-l-black" : "border-l border-l-black/40"
+                              } ${locationIndex === locations.length - 1 ? "border-r-2 border-r-black" : ""} ${
+                                weekIndex % 2 === 0 ? alternateWeekColor : "bg-white"
                               }`}
-                              onClick={() => openCell({ productId: product.id, productName: product.name, weekStart: week.start, weekLabel: week.label, locationCode: location.code, locationName: location.name })}
-                              title={`Modifier ${product.name}, ${week.label}, ${location.name}`}
-                              type="button"
+                              key={`${product.id}-${week.number}-${weekIndex}-${location.code}`}
                             >
-                              <span
-                                aria-hidden="true"
-                                className={`inline-flex h-5 w-5 items-center justify-center rounded text-base font-black leading-none lg:h-7 lg:w-7 lg:text-xl ${
-                                  savedCells.find((cell) => cell.product_id === product.id && cell.week_start === week.start && cell.location_code === location.code)?.status === "final"
-                                    ? "bg-primary  text-white"
-                                    : savedCells.find((cell) => cell.product_id === product.id && cell.week_start === week.start && cell.location_code === location.code)?.status === "email"
-                                      ? "bg-[#4C1CC6] text-white"
-                                      : ""
-                                }`}
+                              <button
+                                className="h-full min-h-6 w-full cursor-pointer transition hover:bg-primary/35 focus:outline-2 focus:outline-secondary lg:min-h-8"
+                                onClick={() => openCell({ productId: product.id, productName: product.name, weekStart: week.start, weekLabel: week.label, locationCode: location.code, locationName: location.name })}
+                                title={`Modifier ${product.name}, ${week.label}, ${location.name}${displayedPrice !== undefined ? ` — ${displayedPrice} $` : ""}`}
+                                type="button"
                               >
-                                {savedCells.find((cell) => cell.product_id === product.id && cell.week_start === week.start && cell.location_code === location.code)?.status === "final" ? "X" :
-                                  savedCells.find((cell) => cell.product_id === product.id && cell.week_start === week.start && cell.location_code === location.code)?.status === "email" ? "C" : ""}
-                              </span>
-                              <span className="sr-only">Modifier cette case</span>
-                            </button>
-                          </td>
-                        )),
+                                <span
+                                  aria-hidden="true"
+                                  className={`inline-flex h-full w-full items-center justify-center overflow-hidden text-base font-black leading-none lg:text-lg ${
+                                    savedCell?.status === "final"
+                                      ? "bg-primary text-white"
+                                      : savedCell?.status === "email"
+                                        ? "bg-[#4C1CC6] text-white"
+                                        : ""
+                                  }`}
+                                >
+                                  {displayedPrice}
+                                </span>
+                                <span className="sr-only">
+                                  {displayedPrice !== undefined
+                                    ? `Modifier cette case, prix ${displayedPrice} dollars, ${savedCell?.status === "final" ? "prix final" : "prix reçu par courriel"}`
+                                    : "Modifier cette case"}
+                                </span>
+                              </button>
+                            </td>
+                          )
+                        }),
                       )}
                     </tr>
                   ))}
