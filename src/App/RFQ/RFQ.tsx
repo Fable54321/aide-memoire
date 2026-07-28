@@ -117,7 +117,7 @@ const RFQ = () => {
     const end = addDays(start, 6)
     return {
       start: formatDateKey(start),
-      number: isMetro ?  getIsoWeek(start) -1 : getIsoWeek(start),
+      number: getIsoWeek(start),
       startLabel: formatShortDate(isMetro ? addDays(start, -1) : start),
       endLabel: formatShortDate(isMetro ? addDays(start, 7) : end),
       title: isSobeys
