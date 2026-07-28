@@ -164,10 +164,22 @@ const RFQ = () => {
 
   useEffect(() => {
     if (!selectedCell) return
-    const close = (event: KeyboardEvent) => event.key === "Escape" && !previewAttachment && setSelectedCell(null)
-    window.addEventListener("keydown", close)
-    return () => window.removeEventListener("keydown", close)
-  }, [previewAttachment, selectedCell])
+    const handleDialogKeyDown = (event: KeyboardEvent) => {
+      if (previewAttachment) return
+      if (event.key === "Escape") {
+        setSelectedCell(null)
+      } else if (isEditingPrice && (event.key === "ArrowLeft" || event.key === "ArrowRight")) {
+        event.preventDefault()
+        const amount = event.key === "ArrowLeft" ? -1 : 1
+        setPriceRows((current) => current.map((item, index) =>
+          index === 0 ? String(Math.max(0, (Number(item.replace(",", ".")) || 0) + amount)) : item,
+        ))
+        setAllowSaveWithoutPrice(false)
+      }
+    }
+    window.addEventListener("keydown", handleDialogKeyDown)
+    return () => window.removeEventListener("keydown", handleDialogKeyDown)
+  }, [isEditingPrice, previewAttachment, selectedCell])
 
   const handleSave = async () => {
     if (!selectedCell) return
@@ -485,17 +497,20 @@ const RFQ = () => {
                   </button>
                 </div>
               ) : (
-                priceRows.map((row, index) => (
-                  <div className="flex items-center justify-center gap-2" key={index}>
-                    <button aria-label="Diminuer le prix de 1" className="cursor-pointer rounded-full p-2 text-green-700 transition hover:bg-green-100" onClick={() => adjustPrice(index, -1)} type="button">
-                      <ArrowLeft aria-hidden="true" size={22} strokeWidth={3} />
-                    </button>
-                    <input aria-label={`Prix/Qté ${index + 1}`} autoFocus={index === 0} className="w-32 rounded border border-gray-300 px-3 py-2 text-center" inputMode="decimal" onChange={(event) => { setPriceRows((current) => current.map((item, rowIndex) => rowIndex === index ? event.target.value : item)); setAllowSaveWithoutPrice(false) }} onFocus={(event) => event.currentTarget.select()} onKeyDown={(event) => { if (event.nativeEvent.isComposing) return; if (event.key === "Enter") { event.preventDefault(); void handleSave() } else if (event.key === "ArrowLeft") { event.preventDefault(); adjustPrice(index, -1) } else if (event.key === "ArrowRight") { event.preventDefault(); adjustPrice(index, 1) } }} placeholder="ex. 25" value={row} />
-                    <button aria-label="Augmenter le prix de 1" className="cursor-pointer rounded-full p-2 text-green-700 transition hover:bg-green-100" onClick={() => adjustPrice(index, 1)} type="button">
-                      <ArrowRight aria-hidden="true" size={22} strokeWidth={3} />
-                    </button>
-                  </div>
-                ))
+                <div>
+                  {priceRows.map((row, index) => (
+                    <div className="flex items-center justify-center gap-2" key={index}>
+                      <button aria-label="Diminuer le prix de 1" className="cursor-pointer rounded-full p-2 text-green-700 transition hover:bg-green-100" onClick={() => adjustPrice(index, -1)} type="button">
+                        <ArrowLeft aria-hidden="true" size={22} strokeWidth={3} />
+                      </button>
+                      <input aria-label={`Prix/Qté ${index + 1}`} autoFocus={index === 0} className="w-32 rounded border border-gray-300 px-3 py-2 text-center" inputMode="decimal" onChange={(event) => { setPriceRows((current) => current.map((item, rowIndex) => rowIndex === index ? event.target.value : item)); setAllowSaveWithoutPrice(false) }} onFocus={(event) => event.currentTarget.select()} onKeyDown={(event) => { if (event.key === "Enter" && !event.nativeEvent.isComposing) { event.preventDefault(); void handleSave() } }} placeholder="ex. 25" value={row} />
+                      <button aria-label="Augmenter le prix de 1" className="cursor-pointer rounded-full p-2 text-green-700 transition hover:bg-green-100" onClick={() => adjustPrice(index, 1)} type="button">
+                        <ArrowRight aria-hidden="true" size={22} strokeWidth={3} />
+                      </button>
+                    </div>
+                  ))}
+                  <p className="mt-1 text-center text-xs text-gray-500">Utilisez les flèches ← et → pour ajuster le prix de −1 ou +1.</p>
+                </div>
               )}
             </div>
 
