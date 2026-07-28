@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState, type ClipboardEvent } from "react"
-import { FileText, Settings, Trash2, Upload, X } from "lucide-react"
+import { ArrowLeft, ArrowRight, FileText, Settings, Trash2, Upload, X } from "lucide-react"
 import { rfqSuppliers } from "../ClientsAndVegetables/suppliers"
 import { useRfq } from "../../Contexts/rfqContext"
 import AttachmentPreviewModal from "./AttachmentPreviewModal"
@@ -92,7 +92,7 @@ const RFQ = () => {
   const [selectedSupplier, setSelectedSupplier] = useState<RfqSupplier>(rfqSuppliers[0])
   const { productsByClient, loadingByClient, errorsByClient, loadClientProducts, cellsByClient, saveCell, deleteCell, openAttachment } = useRfq()
   const [selectedCell, setSelectedCell] = useState<SelectedCell | null>(null)
-  const [priceRows, setPriceRows] = useState([""])
+  const [priceRows, setPriceRows] = useState(["20"])
   const [isEditingPrice, setIsEditingPrice] = useState(true)
   const [cellStatus, setCellStatus] = useState<"final" | "email">("email")
   const [files, setFiles] = useState<File[]>([])
@@ -141,11 +141,19 @@ const RFQ = () => {
   const closeProductManagement = useCallback(() => setIsManagingProducts(false), [])
   const closeAttachmentPreview = useCallback(() => setPreviewAttachment(null), [])
 
+  const adjustPrice = (index: number, amount: number) => {
+    setPriceRows((current) => current.map((item, rowIndex) => {
+      if (rowIndex !== index) return item
+      return String(Math.max(0, (Number(item.replace(",", ".")) || 0) + amount))
+    }))
+    setAllowSaveWithoutPrice(false)
+  }
+
   const openCell = (cellSelection: SelectedCell) => {
     const cell = savedCells.find((item) =>
       item.product_id === cellSelection.productId && item.week_start === cellSelection.weekStart && item.location_code === cellSelection.locationCode,
     )
-    setPriceRows(cell?.prices.length ? cell.prices.map((item) => String(item.price)) : [""])
+    setPriceRows(cell?.prices.length ? cell.prices.map((item) => String(item.price)) : ["20"])
     setIsEditingPrice(!cell?.prices.length)
     setCellStatus(cell?.status ?? "email")
     setFiles([])
@@ -464,7 +472,11 @@ const RFQ = () => {
                   </label>
                 </div>
               </fieldset>
+              <div className="flex flex-col">
+
               <div className="text-sm font-bold"><span className="text-[1.2rem]">PRIX</span>($) par <span className="text-[1.2rem]">QTÉ</span>(boîtes, palettes etc ...)</div>
+              (Appuyer sur entrée pour enregistrer)
+              </div>
               {(activeSavedCell?.prices.length ?? 0) > 0 && !isEditingPrice ? (
                 <div className="flex items-center justify-between gap-3 rounded-lg border border-green-300 bg-green-50 px-4 py-3">
                   <span className="text-lg font-bold text-green-900">{priceRows[0]} $</span>
@@ -474,7 +486,15 @@ const RFQ = () => {
                 </div>
               ) : (
                 priceRows.map((row, index) => (
-                  <input aria-label={`Prix/Qté ${index + 1}`} autoFocus={(activeSavedCell?.prices.length ?? 0) > 0} className="w-full rounded border border-gray-300 px-3 py-2" inputMode="decimal" key={index} onChange={(event) => { setPriceRows((current) => current.map((item, rowIndex) => rowIndex === index ? event.target.value : item)); setAllowSaveWithoutPrice(false) }} placeholder="ex. 25" value={row} />
+                  <div className="flex items-center justify-center gap-2" key={index}>
+                    <button aria-label="Diminuer le prix de 1" className="cursor-pointer rounded-full p-2 text-green-700 transition hover:bg-green-100" onClick={() => adjustPrice(index, -1)} type="button">
+                      <ArrowLeft aria-hidden="true" size={22} strokeWidth={3} />
+                    </button>
+                    <input aria-label={`Prix/Qté ${index + 1}`} autoFocus={index === 0} className="w-32 rounded border border-gray-300 px-3 py-2 text-center" inputMode="decimal" onChange={(event) => { setPriceRows((current) => current.map((item, rowIndex) => rowIndex === index ? event.target.value : item)); setAllowSaveWithoutPrice(false) }} onFocus={(event) => event.currentTarget.select()} onKeyDown={(event) => { if (event.nativeEvent.isComposing) return; if (event.key === "Enter") { event.preventDefault(); void handleSave() } else if (event.key === "ArrowLeft") { event.preventDefault(); adjustPrice(index, -1) } else if (event.key === "ArrowRight") { event.preventDefault(); adjustPrice(index, 1) } }} placeholder="ex. 25" value={row} />
+                    <button aria-label="Augmenter le prix de 1" className="cursor-pointer rounded-full p-2 text-green-700 transition hover:bg-green-100" onClick={() => adjustPrice(index, 1)} type="button">
+                      <ArrowRight aria-hidden="true" size={22} strokeWidth={3} />
+                    </button>
+                  </div>
                 ))
               )}
             </div>
