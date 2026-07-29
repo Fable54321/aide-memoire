@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState, type ClipboardEvent } from "react"
-import { ArrowLeft, ArrowRight, FileText, Settings, Trash2, Upload, X } from "lucide-react"
+import { ArrowLeft, ArrowRight, ExternalLink, FileText, Mail, Settings, Trash2, X } from "lucide-react"
 import { rfqSuppliers } from "../ClientsAndVegetables/suppliers"
 import { useRfq } from "../../Contexts/rfqContext"
 import {
@@ -8,9 +8,11 @@ import {
   type SelectedRfqCell,
 } from "../../Utils/rfqUtils"
 import AttachmentPreviewModal from "./AttachmentPreviewModal"
-import PendingAttachmentPreview from "./PendingAttachmentPreview"
 import ProductManagementModal from "./ProductManagementModal"
 import Calendar from "./Components/Calendar"
+import AttachmentDropZone from "./Components/AttachmentDropZone"
+import OutlookMessagePicker, { type OutlookMessage } from "./Components/OutlookMessagePicker"
+import { useAuth } from "../../Contexts/AuthContext"
 
 const getAttachmentDisplayName = (fileName: string, contentType: string) => {
   if (contentType.startsWith("image/")) {
@@ -22,12 +24,14 @@ const getAttachmentDisplayName = (fileName: string, contentType: string) => {
 
 const RFQ = () => {
   const [selectedSupplier, setSelectedSupplier] = useState<RfqSupplier>(rfqSuppliers[0])
-  const { cellsByClient, saveCell, deleteCell, openAttachment } = useRfq()
+  const { cellsByClient, saveCell, deleteCell, openAttachment, openOutlookLink } = useRfq()
+  const { user } = useAuth()
   const [selectedCell, setSelectedCell] = useState<SelectedRfqCell | null>(null)
   const [priceRows, setPriceRows] = useState(["20"])
   const [isEditingPrice, setIsEditingPrice] = useState(true)
   const [cellStatus, setCellStatus] = useState<"final" | "email">("email")
   const [files, setFiles] = useState<File[]>([])
+  const [selectedOutlookMessages, setSelectedOutlookMessages] = useState<OutlookMessage[]>([])
   const [isSaving, setIsSaving] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
   const [saveError, setSaveError] = useState("")
@@ -50,6 +54,20 @@ const RFQ = () => {
     setAllowSaveWithoutPrice(false)
   }
 
+  const addFiles = (incomingFiles: File[]) => {
+    setFiles((currentFiles) => {
+      const knownFiles = new Set(
+        currentFiles.map((file) => `${file.name}:${file.size}:${file.lastModified}`),
+      )
+      return [
+        ...currentFiles,
+        ...incomingFiles.filter(
+          (file) => !knownFiles.has(`${file.name}:${file.size}:${file.lastModified}`),
+        ),
+      ]
+    })
+  }
+
   const openCell = (cellSelection: SelectedRfqCell) => {
     const cell = savedCells.find((item) =>
       item.product_id === cellSelection.productId && item.week_start === cellSelection.weekStart && item.location_code === cellSelection.locationCode,
@@ -58,6 +76,7 @@ const RFQ = () => {
     setIsEditingPrice(!cell?.prices.length)
     setCellStatus(cell?.status ?? "email")
     setFiles([])
+    setSelectedOutlookMessages([])
     setSaveError("")
     setAllowSaveWithoutPrice(false)
     setSelectedCell(cellSelection)
@@ -100,7 +119,16 @@ const RFQ = () => {
     setIsSaving(true)
     setSaveError("")
     try {
-      await saveCell({ clientId: selectedSupplier.id, productId: selectedCell.productId, weekStart: selectedCell.weekStart, locationCode: selectedCell.locationCode, status: cellStatus, prices: parsedPrices, files })
+      await saveCell({
+        clientId: selectedSupplier.id,
+        productId: selectedCell.productId,
+        weekStart: selectedCell.weekStart,
+        locationCode: selectedCell.locationCode,
+        status: cellStatus,
+        prices: parsedPrices,
+        files,
+        outlookMessageIds: selectedOutlookMessages.map((message) => message.id),
+      })
       setSelectedCell(null)
     } catch (error) {
       setSaveError(error instanceof Error ? error.message : "Impossible d’enregistrer.")
@@ -123,7 +151,7 @@ const RFQ = () => {
     if (!pastedImages.length) return
 
     event.preventDefault()
-    setFiles((current) => [...current, ...pastedImages])
+    addFiles(pastedImages)
   }
 
   const handleDelete = async () => {
@@ -263,8 +291,44 @@ const RFQ = () => {
             </div>
 
             <div className="mt-6 border-t pt-4">
-              <p className="text-sm font-bold">Capture d’écran ou document</p>
-              <p className="mt-1 text-xs text-gray-600">Ajoutez une image avec Ctrl+V ou par clic droit.</p>
+              <p className="text-sm font-bold">Courriel Outlook lié</p>
+              <OutlookMessagePicker
+                onChange={setSelectedOutlookMessages}
+                selectedMessages={selectedOutlookMessages}
+              />
+              {(activeSavedCell?.email_links.length ?? 0) > 0 && (
+                <div className="mt-3 space-y-2">
+                  <p className="text-xs font-bold text-gray-700">Courriels déjà liés</p>
+                  {activeSavedCell?.email_links.map((emailLink) => {
+                    const canOpen = emailLink.user_id === user?.id
+                    return (
+                      <button
+                        className="flex w-full items-center gap-3 rounded-lg border border-blue-200 bg-blue-50 p-3 text-left disabled:cursor-not-allowed disabled:opacity-60"
+                        disabled={!canOpen}
+                        key={emailLink.id}
+                        onClick={() => void openOutlookLink(emailLink.id)}
+                        title={canOpen ? "Ouvrir dans Outlook" : `Lié par ${emailLink.owner_username}`}
+                        type="button"
+                      >
+                        <Mail className="shrink-0 text-blue-700" size={20} />
+                        <span className="min-w-0 flex-1">
+                          <span className="block truncate text-sm font-bold">{emailLink.subject}</span>
+                          <span className="block truncate text-xs text-gray-600">
+                            {emailLink.sender_name || emailLink.sender_email}
+                            {!canOpen && ` · Lié par ${emailLink.owner_username}`}
+                          </span>
+                        </span>
+                        {canOpen && <ExternalLink className="shrink-0 text-blue-700" size={17} />}
+                      </button>
+                    )
+                  })}
+                </div>
+              )}
+            </div>
+
+            <div className="mt-6 border-t pt-4">
+              <p className="text-sm font-bold">Courriel, capture d’écran ou document</p>
+              <p className="mt-1 text-xs text-gray-600">Glissez un courriel Outlook, ou collez une image avec Ctrl+V.</p>
               <div
                 aria-label="Zone de collage d’image"
                 className="mt-2 min-h-14 cursor-text rounded-lg border-2 border-dashed border-gray-300 bg-gray-50 px-3 py-4 text-center text-sm text-gray-600 outline-none transition focus:border-secondary focus:bg-secondary/5"
@@ -275,25 +339,15 @@ const RFQ = () => {
               >
                 Clic droit ici, puis Coller
               </div>
-              <label className="mt-2 inline-flex cursor-pointer items-center gap-2 rounded-lg border border-secondary px-4 py-2 text-sm font-bold text-secondary transition hover:bg-secondary/10" htmlFor="rfq-files">
-                <Upload size={17} /> Choisir des fichiers
-              </label>
-              <input accept="image/*,.pdf,.doc,.docx,.xls,.xlsx" className="sr-only" id="rfq-files" multiple onChange={(event) => setFiles(Array.from(event.target.files ?? []))} type="file" />
+              <AttachmentDropZone
+                files={files}
+                getDisplayName={getAttachmentDisplayName}
+                onAddFiles={addFiles}
+                onRemoveFile={(index) => setFiles((currentFiles) => currentFiles.filter((_, fileIndex) => fileIndex !== index))}
+              />
               {(activeSavedCell?.attachments.length ?? 0) > 0 && <div className="mt-3 space-y-1">{activeSavedCell?.attachments.map((attachment) => (
                 <button className="flex cursor-pointer items-center gap-2 text-left text-sm text-secondary underline" key={attachment.id} onClick={() => attachment.content_type.startsWith("image/") ? setPreviewAttachment({ id: attachment.id, fileName: getAttachmentDisplayName(attachment.file_name, attachment.content_type) }) : void openAttachment(attachment.id)} type="button"><FileText size={16} />{getAttachmentDisplayName(attachment.file_name, attachment.content_type)}</button>
               ))}</div>}
-              {files.length > 0 && (
-                <div className="mt-3 space-y-2">
-                  <p>{files.length} fichier{files.length > 1 ? "s" : ""} sélectionné{files.length > 1 ? "s" : ""} :</p>
-                  {files.map((file, index) => (
-                    <PendingAttachmentPreview
-                      displayName={getAttachmentDisplayName(file.name, file.type)}
-                      file={file}
-                      key={`${file.name}-${file.lastModified}-${index}`}
-                    />
-                  ))}
-                </div>
-              )}
             </div>
 
             {saveError && <p className="mt-4 text-sm text-red-700" role="alert">{saveError}</p>}

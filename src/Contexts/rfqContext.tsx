@@ -26,6 +26,15 @@ export type RfqCell = {
   status: "final" | "email"
   prices: Array<{ id: number; quantity: number | string; price: number | string }>
   attachments: Array<{ id: number; file_name: string; content_type: string }>
+  email_links: Array<{
+    id: number
+    user_id: number
+    owner_username: string
+    subject: string
+    sender_name: string
+    sender_email: string
+    received_at: string | null
+  }>
 }
 
 type ClientProductsResponse = {
@@ -44,10 +53,11 @@ type RfqContextType = {
   activateProduct: (clientId: number, productId: number) => Promise<void>
   cellsByClient: Record<number, RfqCell[]>
   loadClientCells: (clientId: number) => Promise<void>
-  saveCell: (data: { clientId: number; productId: number; weekStart: string; locationCode: string; status: "final" | "email"; prices: Array<{ quantity: number; price: number }>; files: File[] }) => Promise<void>
+  saveCell: (data: { clientId: number; productId: number; weekStart: string; locationCode: string; status: "final" | "email"; prices: Array<{ quantity: number; price: number }>; files: File[]; outlookMessageIds: string[] }) => Promise<void>
   deleteCell: (cellId: number, clientId: number) => Promise<void>
   getAttachmentUrl: (attachmentId: number) => Promise<string>
   openAttachment: (attachmentId: number) => Promise<void>
+  openOutlookLink: (linkId: number) => Promise<void>
 }
 
 const RfqContext = createContext<RfqContextType | undefined>(undefined)
@@ -117,6 +127,7 @@ export const RfqProvider = ({ children }: { children: ReactNode }) => {
     body.append("locationCode", data.locationCode)
     body.append("status", data.status)
     body.append("prices", JSON.stringify(data.prices))
+    body.append("outlookMessageIds", JSON.stringify(data.outlookMessageIds))
     data.files.forEach((file) => body.append("files", file))
     await fetchWithAuth("/sales/rfq-cells", { method: "PUT", body })
     await loadClientCells(data.clientId)
@@ -137,6 +148,22 @@ export const RfqProvider = ({ children }: { children: ReactNode }) => {
     window.open(url, "_blank", "noopener,noreferrer")
   }, [getAttachmentUrl])
 
+  const openOutlookLink = useCallback(async (linkId: number) => {
+    const outlookWindow = window.open("about:blank", "_blank")
+    try {
+      const { url } = await fetchWithAuth<{ url: string }>(`/sales/outlook-links/${linkId}/open`)
+      if (outlookWindow) {
+        outlookWindow.opener = null
+        outlookWindow.location.replace(url)
+      } else {
+        window.location.assign(url)
+      }
+    } catch (error) {
+      outlookWindow?.close()
+      throw error
+    }
+  }, [])
+
   useEffect(() => {
     rfqSuppliers.forEach(({ id }) => {
       void loadClientProducts(id)
@@ -146,7 +173,7 @@ export const RfqProvider = ({ children }: { children: ReactNode }) => {
 
   return (
     <RfqContext.Provider
-      value={{ productsByClient, loadingByClient, errorsByClient, loadClientProducts, getAllClientProducts, addProduct, deactivateProduct, activateProduct, cellsByClient, loadClientCells, saveCell, deleteCell, getAttachmentUrl, openAttachment }}
+      value={{ productsByClient, loadingByClient, errorsByClient, loadClientProducts, getAllClientProducts, addProduct, deactivateProduct, activateProduct, cellsByClient, loadClientCells, saveCell, deleteCell, getAttachmentUrl, openAttachment, openOutlookLink }}
     >
       {children}
     </RfqContext.Provider>
