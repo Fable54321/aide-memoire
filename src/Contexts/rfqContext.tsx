@@ -49,11 +49,14 @@ type RfqContextType = {
   loadClientProducts: (clientId: number) => Promise<void>
   getAllClientProducts: (clientId: number) => Promise<RfqProduct[]>
   addProduct: (clientId: number, name: string) => Promise<void>
+  reorderProducts: (clientId: number, productIds: number[]) => Promise<void>
   deactivateProduct: (clientId: number, productId: number) => Promise<void>
   activateProduct: (clientId: number, productId: number) => Promise<void>
   cellsByClient: Record<number, RfqCell[]>
   loadClientCells: (clientId: number) => Promise<void>
   saveCell: (data: { clientId: number; productId: number; weekStart: string; locationCode: string; status: "final" | "email"; prices: Array<{ quantity: number; price: number }>; files: File[]; outlookMessageIds: string[] }) => Promise<void>
+  moveCell: (data: { cellId: number; clientId: number; productId: number; weekStart: string; locationCode: string }) => Promise<void>
+  moveCells: (data: { clientId: number; moves: Array<{ cellId: number; weekStart: string; locationCode: string }> }) => Promise<void>
   deleteCell: (cellId: number, clientId: number) => Promise<void>
   getAttachmentUrl: (attachmentId: number) => Promise<string>
   openAttachment: (attachmentId: number) => Promise<void>
@@ -100,6 +103,14 @@ export const RfqProvider = ({ children }: { children: ReactNode }) => {
     return response.products
   }, [])
 
+  const reorderProducts: RfqContextType["reorderProducts"] = useCallback(async (clientId, productIds) => {
+    await fetchWithAuth(`/sales/clients/${clientId}/products/reorder`, {
+      method: "PATCH",
+      body: { productIds },
+    })
+    await loadClientProducts(clientId)
+  }, [loadClientProducts])
+
   const deactivateProduct: RfqContextType["deactivateProduct"] = useCallback(async (clientId, productId) => {
     await fetchWithAuth(`/sales/clients/${clientId}/products/${productId}/deactivate`, {
       method: "PATCH",
@@ -138,6 +149,27 @@ export const RfqProvider = ({ children }: { children: ReactNode }) => {
     await loadClientCells(clientId)
   }, [loadClientCells])
 
+  const moveCell: RfqContextType["moveCell"] = useCallback(async (data) => {
+    await fetchWithAuth(`/sales/rfq-cells/${data.cellId}/move`, {
+      method: "PATCH",
+      body: {
+        clientId: data.clientId,
+        productId: data.productId,
+        weekStart: data.weekStart,
+        locationCode: data.locationCode,
+      },
+    })
+    await loadClientCells(data.clientId)
+  }, [loadClientCells])
+
+  const moveCells: RfqContextType["moveCells"] = useCallback(async (data) => {
+    await fetchWithAuth("/sales/rfq-cells/move-batch", {
+      method: "PATCH",
+      body: data,
+    })
+    await loadClientCells(data.clientId)
+  }, [loadClientCells])
+
   const getAttachmentUrl = useCallback(async (attachmentId: number) => {
     const { url } = await fetchWithAuth<{ url: string }>(`/sales/rfq-attachments/${attachmentId}`)
     return url
@@ -173,7 +205,7 @@ export const RfqProvider = ({ children }: { children: ReactNode }) => {
 
   return (
     <RfqContext.Provider
-      value={{ productsByClient, loadingByClient, errorsByClient, loadClientProducts, getAllClientProducts, addProduct, deactivateProduct, activateProduct, cellsByClient, loadClientCells, saveCell, deleteCell, getAttachmentUrl, openAttachment, openOutlookLink }}
+      value={{ productsByClient, loadingByClient, errorsByClient, loadClientProducts, getAllClientProducts, addProduct, reorderProducts, deactivateProduct, activateProduct, cellsByClient, loadClientCells, saveCell, moveCell, moveCells, deleteCell, getAttachmentUrl, openAttachment, openOutlookLink }}
     >
       {children}
     </RfqContext.Provider>

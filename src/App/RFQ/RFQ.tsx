@@ -14,6 +14,9 @@ import AttachmentDropZone from "./Components/AttachmentDropZone"
 import OutlookMessagePicker, { type OutlookMessage } from "./Components/OutlookMessagePicker"
 import { useAuth } from "../../Contexts/AuthContext"
 
+// TODO: Set to true once Microsoft Graph admin consent has been granted.
+const MICROSOFT_GRAPH_ENABLED = false
+
 const getAttachmentDisplayName = (fileName: string, contentType: string) => {
   if (contentType.startsWith("image/")) {
     if (fileName.toLowerCase().startsWith("capture d")) return "Capture d’écran"
@@ -290,41 +293,43 @@ const RFQ = () => {
               )}
             </div>
 
-            <div className="mt-6 border-t pt-4">
-              <p className="text-sm font-bold">Courriel Outlook lié</p>
-              <OutlookMessagePicker
-                onChange={setSelectedOutlookMessages}
-                selectedMessages={selectedOutlookMessages}
-              />
-              {(activeSavedCell?.email_links.length ?? 0) > 0 && (
-                <div className="mt-3 space-y-2">
-                  <p className="text-xs font-bold text-gray-700">Courriels déjà liés</p>
-                  {activeSavedCell?.email_links.map((emailLink) => {
-                    const canOpen = emailLink.user_id === user?.id
-                    return (
-                      <button
-                        className="flex w-full items-center gap-3 rounded-lg border border-blue-200 bg-blue-50 p-3 text-left disabled:cursor-not-allowed disabled:opacity-60"
-                        disabled={!canOpen}
-                        key={emailLink.id}
-                        onClick={() => void openOutlookLink(emailLink.id)}
-                        title={canOpen ? "Ouvrir dans Outlook" : `Lié par ${emailLink.owner_username}`}
-                        type="button"
-                      >
-                        <Mail className="shrink-0 text-blue-700" size={20} />
-                        <span className="min-w-0 flex-1">
-                          <span className="block truncate text-sm font-bold">{emailLink.subject}</span>
-                          <span className="block truncate text-xs text-gray-600">
-                            {emailLink.sender_name || emailLink.sender_email}
-                            {!canOpen && ` · Lié par ${emailLink.owner_username}`}
+            {MICROSOFT_GRAPH_ENABLED && (
+              <div className="mt-6 border-t pt-4">
+                <p className="text-sm font-bold">Courriel Outlook lié</p>
+                <OutlookMessagePicker
+                  onChange={setSelectedOutlookMessages}
+                  selectedMessages={selectedOutlookMessages}
+                />
+                {(activeSavedCell?.email_links.length ?? 0) > 0 && (
+                  <div className="mt-3 space-y-2">
+                    <p className="text-xs font-bold text-gray-700">Courriels déjà liés</p>
+                    {activeSavedCell?.email_links.map((emailLink) => {
+                      const canOpen = emailLink.user_id === user?.id
+                      return (
+                        <button
+                          className="flex w-full items-center gap-3 rounded-lg border border-blue-200 bg-blue-50 p-3 text-left disabled:cursor-not-allowed disabled:opacity-60"
+                          disabled={!canOpen}
+                          key={emailLink.id}
+                          onClick={() => void openOutlookLink(emailLink.id)}
+                          title={canOpen ? "Ouvrir dans Outlook" : `Lié par ${emailLink.owner_username}`}
+                          type="button"
+                        >
+                          <Mail className="shrink-0 text-blue-700" size={20} />
+                          <span className="min-w-0 flex-1">
+                            <span className="block truncate text-sm font-bold">{emailLink.subject}</span>
+                            <span className="block truncate text-xs text-gray-600">
+                              {emailLink.sender_name || emailLink.sender_email}
+                              {!canOpen && ` · Lié par ${emailLink.owner_username}`}
+                            </span>
                           </span>
-                        </span>
-                        {canOpen && <ExternalLink className="shrink-0 text-blue-700" size={17} />}
-                      </button>
-                    )
-                  })}
-                </div>
-              )}
-            </div>
+                          {canOpen && <ExternalLink className="shrink-0 text-blue-700" size={17} />}
+                        </button>
+                      )
+                    })}
+                  </div>
+                )}
+              </div>
+            )}
 
             <div className="mt-6 border-t pt-4">
               <p className="text-sm font-bold">Courriel, capture d’écran ou document</p>
