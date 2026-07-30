@@ -358,11 +358,11 @@ const CalendarTable = ({
                     {(savedCell?.attachments.length ?? 0) > 0 && (
                       <span
                         aria-hidden="true"
-                        className="pointer-events-none absolute -right-1.25 -top-1.5 z-30 text-gray-950 drop-shadow-[0_1px_1px_rgba(255,255,255,0.9)]"
+                        className="pointer-events-none absolute -right-1.25 -top-1.75 z-30 text-gray-950 drop-shadow-[0_1px_1px_rgba(255,255,255,0.9)]"
 
                         title={`${savedCell?.attachments.length} fichier${savedCell?.attachments.length === 1 ? "" : "s"} joint${savedCell?.attachments.length === 1 ? "" : "s"}`}
                       >
-                        <Paperclip className="-rotate-35" size={14} strokeWidth={1.5} color={savedCell?.status === "email" ? "#404040" : "#000000"} />
+                        <Paperclip className="-rotate-35" size={16} strokeWidth={2} color={savedCell?.status === "email" ? "#000000" : "#000000"} />
                       </span>
                     )}
                     <span aria-hidden="true" className={`inline-flex h-full w-full items-center justify-center overflow-hidden text-base font-black leading-none lg:text-lg ${savedCell?.status === "final" ? "bg-primary text-white" : savedCell?.status === "email" ? "bg-[#4C1CC6] text-white" : ""}`}>{displayedPrice}</span>
