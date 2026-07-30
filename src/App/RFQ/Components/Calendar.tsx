@@ -1,5 +1,5 @@
 import { useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from "react"
-import { Layers3, X } from "lucide-react"
+import { Layers3, Paperclip, X } from "lucide-react"
 import { useRfq, type RfqCell, type RfqProduct } from "../../../Contexts/rfqContext"
 import {
   getRfqClientConfig,
@@ -308,7 +308,7 @@ const CalendarTable = ({
                   }}
                 >
                   <button
-                    className={`h-full min-h-6 w-full transition hover:bg-primary/35 focus:outline-2 focus:outline-secondary lg:min-h-8 ${savedCell ? "cursor-grab active:cursor-grabbing" : "cursor-pointer"} ${savedCell && selectedCellIds.has(savedCell.id) ? "animate-pulse ring-4 ring-inset ring-cyan-400" : ""}`}
+                    className={`relative h-full min-h-6 w-full transition hover:bg-primary/35 focus:outline-2 focus:outline-secondary lg:min-h-8 ${savedCell ? "cursor-grab active:cursor-grabbing" : "cursor-pointer"} ${savedCell && selectedCellIds.has(savedCell.id) ? "animate-pulse ring-4 ring-inset ring-cyan-400" : ""}`}
                     draggable={Boolean(savedCell) && !isMoving}
                     onClick={() => {
                       if (longPressActivated.current) {
@@ -355,8 +355,25 @@ const CalendarTable = ({
                     title={`${savedCell ? "Glisser pour déplacer, maintenir pour sélectionner ou cliquer pour modifier" : "Modifier"} ${product.name}, ${week.label}, ${location.name}${displayedPrice !== undefined ? ` — ${displayedPrice} $` : ""}`}
                     type="button"
                   >
+                    {(savedCell?.attachments.length ?? 0) > 0 && (
+                      <span
+                        aria-hidden="true"
+                        className="pointer-events-none absolute -right-1.25 -top-1.5 z-30 text-gray-950 drop-shadow-[0_1px_1px_rgba(255,255,255,0.9)]"
+
+                        title={`${savedCell?.attachments.length} fichier${savedCell?.attachments.length === 1 ? "" : "s"} joint${savedCell?.attachments.length === 1 ? "" : "s"}`}
+                      >
+                        <Paperclip className="-rotate-35" size={14} strokeWidth={1.5} color={savedCell?.status === "email" ? "#404040" : "#000000"} />
+                      </span>
+                    )}
                     <span aria-hidden="true" className={`inline-flex h-full w-full items-center justify-center overflow-hidden text-base font-black leading-none lg:text-lg ${savedCell?.status === "final" ? "bg-primary text-white" : savedCell?.status === "email" ? "bg-[#4C1CC6] text-white" : ""}`}>{displayedPrice}</span>
-                    <span className="sr-only">{displayedPrice !== undefined ? `Modifier cette case, prix ${displayedPrice} dollars, ${savedCell?.status === "final" ? "prix final" : "prix reçu par courriel"}` : "Modifier cette case"}</span>
+                    <span className="sr-only">
+                      {displayedPrice !== undefined
+                        ? `Modifier cette case, prix ${displayedPrice} dollars, ${savedCell?.status === "final" ? "prix final" : "prix reçu par courriel"}`
+                        : "Modifier cette case"}
+                      {(savedCell?.attachments.length ?? 0) > 0
+                        ? `, ${savedCell?.attachments.length} fichier${savedCell?.attachments.length === 1 ? "" : "s"} joint${savedCell?.attachments.length === 1 ? "" : "s"}`
+                        : ""}
+                    </span>
                   </button>
                 </td>
               )

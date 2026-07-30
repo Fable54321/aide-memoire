@@ -14,6 +14,12 @@ const AttachmentPreviewModal = ({ attachment, onClose }: AttachmentPreviewModalP
   const { getAttachmentUrl } = useRfq()
   const [imageUrl, setImageUrl] = useState("")
   const [error, setError] = useState("")
+  const [magnifier, setMagnifier] = useState<{
+    x: number
+    y: number
+    imageWidth: number
+    imageHeight: number
+  } | null>(null)
 
   useEffect(() => {
     let isCancelled = false
@@ -46,11 +52,43 @@ const AttachmentPreviewModal = ({ attachment, onClose }: AttachmentPreviewModalP
           <h3 className="truncate font-bold" id="attachment-preview-title">{attachment.fileName}</h3>
           <button aria-label="Fermer l’aperçu" className="shrink-0 cursor-pointer rounded p-1 hover:bg-gray-100" onClick={onClose} type="button"><X /></button>
         </div>
-        <div className="flex min-h-48 flex-1 items-center justify-center overflow-auto bg-gray-950 p-4">
+        <div className="flex min-h-48 flex-1 flex-col items-center justify-center overflow-auto bg-gray-950 p-4">
           {error ? (
             <p className="rounded bg-white p-4 text-sm text-red-700" role="alert">{error}</p>
           ) : imageUrl ? (
-            <img alt={attachment.fileName} className="max-h-[calc(95vh-5rem)] max-w-full object-contain" src={imageUrl} />
+            <>
+              <p className="mb-2 rounded bg-black/70 px-3 py-1 text-xs text-white">
+                Survolez l’image avec la souris pour utiliser la loupe.
+              </p>
+              <div
+                className="relative inline-block cursor-zoom-in leading-none"
+                onMouseLeave={() => setMagnifier(null)}
+                onMouseMove={(event) => {
+                  const bounds = event.currentTarget.getBoundingClientRect()
+                  setMagnifier({
+                    x: event.clientX - bounds.left,
+                    y: event.clientY - bounds.top,
+                    imageWidth: bounds.width,
+                    imageHeight: bounds.height,
+                  })
+                }}
+              >
+                <img alt={attachment.fileName} className="block max-h-[calc(95vh-7rem)] max-w-full object-contain" src={imageUrl} />
+                {magnifier && (
+                  <span
+                    aria-hidden="true"
+                    className="pointer-events-none absolute z-10 h-44 w-44 rounded-full border-4 border-white bg-no-repeat shadow-2xl"
+                    style={{
+                      left: magnifier.x - 88,
+                      top: magnifier.y - 88,
+                      backgroundImage: `url("${imageUrl}")`,
+                      backgroundSize: `${magnifier.imageWidth * 2.5}px ${magnifier.imageHeight * 2.5}px`,
+                      backgroundPosition: `${88 - magnifier.x * 2.5}px ${88 - magnifier.y * 2.5}px`,
+                    }}
+                  />
+                )}
+              </div>
+            </>
           ) : (
             <p className="text-sm text-white">Chargement de l’image…</p>
           )}
