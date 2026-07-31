@@ -204,7 +204,7 @@ const CalendarTable = ({
       </div>
     )}
     <div className="overflow-x-auto pb-2">
-    <table className="w-max table-auto border-collapse text-sm text-black">
+    <table className="mx-auto w-max table-auto border-collapse text-sm text-black">
       <thead>
         <tr>
           <th className="sticky left-0 z-20 w-56 min-w-56 bg-white lg:w-64 lg:min-w-64" rowSpan={2}><span className="sr-only">Produits</span></th>
@@ -366,7 +366,7 @@ const CalendarTable = ({
                         <Paperclip className="-rotate-35" size={16} strokeWidth={2} color={savedCell?.status === "email" ? "#000000" : "#000000"} />
                       </span>
                     )}
-                    <span aria-hidden="true" className={`inline-flex h-full min-w-full items-center justify-center whitespace-nowrap px-1 font-black leading-none lg:text-lg ${savedCell?.status === "final" ? "bg-primary text-white" : savedCell?.status === "email" ? "bg-[#4C1CC6] text-white" : ""}`}>{displayedPrice}</span>
+                    <span aria-hidden="true" className={`inline-flex h-full min-w-full items-center justify-center whitespace-nowrap px-1 py-1 font-black leading-none lg:text-[1.3rem]  ${savedCell?.status === "final" ? "bg-primary text-white" : savedCell?.status === "email" ? "bg-[#4C1CC6] text-white" : ""}`}>{displayedPrice}</span>
                     <span className="sr-only">
                       {displayedPrice !== undefined
                         ? `Modifier cette case, prix ${displayedPrice} dollars, ${savedCell?.status === "final" ? "prix final" : "prix reçu par courriel"}`
