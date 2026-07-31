@@ -103,7 +103,6 @@ const CalendarTable = ({
   const positions = weeks.flatMap((week) =>
     locations.map((location) => ({ weekStart: week.start, locationCode: location.code })),
   )
-
   const finishDrag = () => {
     setDraggedCell(null)
     setDropTargets([])
@@ -205,7 +204,7 @@ const CalendarTable = ({
       </div>
     )}
     <div className="overflow-x-auto pb-2">
-    <table className="w-max min-w-full table-fixed border-collapse text-sm text-black">
+    <table className="w-max table-auto border-collapse text-sm text-black">
       <thead>
         <tr>
           <th className="sticky left-0 z-20 w-56 min-w-56 bg-white lg:w-64 lg:min-w-64" rowSpan={2}><span className="sr-only">Produits</span></th>
@@ -229,7 +228,7 @@ const CalendarTable = ({
         </tr>
         <tr>
           {weeks.flatMap((week, weekIndex) => locations.map((location, locationIndex) => (
-            <th className={`h-6 w-6 min-w-6 border-y-2 border-black text-center font-extrabold lg:h-8 lg:w-8 lg:min-w-8 ${locationIndex === 0 ? "border-l-2" : "border-l border-l-black/60"} ${locationIndex === locations.length - 1 ? "border-r-2" : ""} ${weekIndex % 2 === 0 ? alternateWeekColor : "bg-white"}`} key={`${week.number}-${weekIndex}-${location.code}`} scope="col" title={location.name}>
+            <th className={`h-6 min-w-8.75 border-y-2 border-black text-center font-extrabold lg:h-8 ${locationIndex === 0 ? "border-l-2" : "border-l border-l-black/60"} ${locationIndex === locations.length - 1 ? "border-r-2" : ""} ${weekIndex % 2 === 0 ? alternateWeekColor : "bg-white"}`} key={`${week.number}-${weekIndex}-${location.code}`} scope="col" title={location.name}>
               {location.code}
             </th>
           )))}
@@ -248,7 +247,7 @@ const CalendarTable = ({
               return (
                 <td
                   aria-label={`${product.name}, semaine ${week.number}, ${location.name}`}
-                  className={`h-6 w-6 min-w-6 border-y border-black/60 transition lg:h-8 lg:w-8 lg:min-w-8 ${locationIndex === 0 ? "border-l-2 border-l-black" : "border-l border-l-black/40"} ${locationIndex === locations.length - 1 ? "border-r-2 border-r-black" : ""} ${weekIndex % 2 === 0 ? alternateWeekColor : "bg-white"} ${dropTargets.includes(targetKey) ? "outline-4 -outline-offset-4 outline-secondary" : ""}`}
+                  className={`h-6 min-w-8.75 border-y border-black/60 transition lg:h-8 ${locationIndex === 0 ? "border-l-2 border-l-black" : "border-l border-l-black/40"} ${locationIndex === locations.length - 1 ? "border-r-2 border-r-black" : ""} ${weekIndex % 2 === 0 ? alternateWeekColor : "bg-white"} ${dropTargets.includes(targetKey) ? "outline-4 -outline-offset-4 outline-secondary" : ""}`}
                   key={`${product.id}-${week.number}-${weekIndex}-${location.code}`}
                   onDragEnter={(event) => {
                     if (!draggedCell || product.id !== draggedCell.product_id) return
@@ -367,7 +366,7 @@ const CalendarTable = ({
                         <Paperclip className="-rotate-35" size={16} strokeWidth={2} color={savedCell?.status === "email" ? "#000000" : "#000000"} />
                       </span>
                     )}
-                    <span aria-hidden="true" className={`inline-flex h-full w-full items-center justify-center overflow-hidden text-base font-black leading-none lg:text-lg ${savedCell?.status === "final" ? "bg-primary text-white" : savedCell?.status === "email" ? "bg-[#4C1CC6] text-white" : ""}`}>{displayedPrice}</span>
+                    <span aria-hidden="true" className={`inline-flex h-full min-w-full items-center justify-center whitespace-nowrap px-1 font-black leading-none lg:text-lg ${savedCell?.status === "final" ? "bg-primary text-white" : savedCell?.status === "email" ? "bg-[#4C1CC6] text-white" : ""}`}>{displayedPrice}</span>
                     <span className="sr-only">
                       {displayedPrice !== undefined
                         ? `Modifier cette case, prix ${displayedPrice} dollars, ${savedCell?.status === "final" ? "prix final" : "prix reçu par courriel"}`

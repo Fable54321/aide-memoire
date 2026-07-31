@@ -173,7 +173,7 @@ const RFQ = () => {
   }
 
   return (
-    <section className="mt-8 w-[min(1080px,calc(100%-1.5rem))] lg:w-[min(1440px,calc(100%-2rem))]">
+    <section className="mt-8 w-[min(1080px,calc(100%-1.5rem))] lg:w-[min(1660px,calc(100%-2rem))]">
       <div className="text-center">
         <h2 className="text-2xl font-bold">RFQ</h2>
         <p className="mt-2 text-gray-600">Sélectionnez un client pour consulter ses RFQ.</p>
