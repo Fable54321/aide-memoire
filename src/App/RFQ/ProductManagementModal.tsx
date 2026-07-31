@@ -2,6 +2,9 @@ import { useEffect, useState } from "react"
 import { GripVertical, Plus, PowerOff, RotateCcw, Save, X } from "lucide-react"
 import { useRfq, type RfqProduct } from "../../Contexts/rfqContext"
 
+// Temporary feature switch: set to true to restore product-name editing.
+const PRODUCT_NAME_EDITING_ENABLED = false
+
 type ProductManagementModalProps = {
   clientId: number
   clientName: string
@@ -9,7 +12,7 @@ type ProductManagementModalProps = {
 }
 
 const ProductManagementModal = ({ clientId, clientName, onClose }: ProductManagementModalProps) => {
-  const { getAllClientProducts, addProduct, updateProductItemCode, reorderProducts, deactivateProduct, activateProduct } = useRfq()
+  const { getAllClientProducts, addProduct, updateProductName, updateProductItemCode, reorderProducts, deactivateProduct, activateProduct } = useRfq()
   const [products, setProducts] = useState<RfqProduct[]>([])
   const [newProductName, setNewProductName] = useState("")
   const [isLoading, setIsLoading] = useState(true)
@@ -98,6 +101,30 @@ const ProductManagementModal = ({ clientId, clientName, onClose }: ProductManage
     }
   }
 
+  const handleUpdateName = async (product: RfqProduct, name: string) => {
+    const trimmedName = name.trim()
+    if (!trimmedName) {
+      setError("Le nom du produit ne peut pas être vide.")
+      throw new Error("Product name is empty")
+    }
+    if (!window.confirm(`Changer « ${product.name} » pour « ${trimmedName} »? L’historique RFQ restera associé à ce produit.`)) {
+      return false
+    }
+
+    setPendingProductId(product.id)
+    setError("")
+    try {
+      await updateProductName(clientId, product.id, trimmedName)
+      await refreshProducts()
+      return true
+    } catch (actionError) {
+      setError(actionError instanceof Error ? actionError.message : "Impossible de modifier le nom du produit.")
+      throw actionError
+    } finally {
+      setPendingProductId(null)
+    }
+  }
+
   const handleReorder = async (productIds: number[]) => {
     const productById = new Map(products.map((product) => [product.id, product]))
     const reorderedActiveProducts = productIds
@@ -147,8 +174,8 @@ const ProductManagementModal = ({ clientId, clientName, onClose }: ProductManage
           <p className="py-8 text-center text-sm text-gray-600">Chargement des produits…</p>
         ) : (
           <div className="mt-5 grid gap-5 sm:grid-cols-2">
-            <ProductList title={`Actifs (${activeProducts.length})`} products={activeProducts} pendingProductId={pendingProductId} onReorder={handleReorder} onToggle={handleToggleProduct} onUpdateItemCode={handleUpdateItemCode} />
-            <ProductList inactive title={`Désactivés (${inactiveProducts.length})`} products={inactiveProducts} pendingProductId={pendingProductId} onToggle={handleToggleProduct} onUpdateItemCode={handleUpdateItemCode} />
+            <ProductList title={`Actifs (${activeProducts.length})`} products={activeProducts} pendingProductId={pendingProductId} onReorder={handleReorder} onToggle={handleToggleProduct} onUpdateItemCode={handleUpdateItemCode} onUpdateName={handleUpdateName} />
+            <ProductList inactive title={`Désactivés (${inactiveProducts.length})`} products={inactiveProducts} pendingProductId={pendingProductId} onToggle={handleToggleProduct} onUpdateItemCode={handleUpdateItemCode} onUpdateName={handleUpdateName} />
           </div>
         )}
       </div>
@@ -164,12 +191,24 @@ type ProductListProps = {
   onReorder?: (productIds: number[]) => Promise<void>
   onToggle: (product: RfqProduct) => Promise<void>
   onUpdateItemCode: (product: RfqProduct, itemCode: string) => Promise<void>
+  onUpdateName: (product: RfqProduct, name: string) => Promise<boolean>
 }
 
-const ProductList = ({ title, products, inactive = false, pendingProductId, onReorder, onToggle, onUpdateItemCode }: ProductListProps) => {
+const ProductList = ({ title, products, inactive = false, pendingProductId, onReorder, onToggle, onUpdateItemCode, onUpdateName }: ProductListProps) => {
   const [draggedProductId, setDraggedProductId] = useState<number | null>(null)
   const [dropProductId, setDropProductId] = useState<number | null>(null)
   const [itemCodeEdits, setItemCodeEdits] = useState<Record<number, string>>({})
+  const [nameEdits, setNameEdits] = useState<Record<number, string>>({})
+
+  const saveName = async (product: RfqProduct) => {
+    const wasUpdated = await onUpdateName(product, nameEdits[product.id] ?? product.name)
+    if (!wasUpdated) return
+    setNameEdits((current) => {
+      const next = { ...current }
+      delete next[product.id]
+      return next
+    })
+  }
 
   const saveItemCode = async (product: RfqProduct) => {
     await onUpdateItemCode(product, itemCodeEdits[product.id] ?? product.item_code ?? "")
@@ -238,7 +277,35 @@ const ProductList = ({ title, products, inactive = false, pendingProductId, onRe
           >
             {!inactive && <GripVertical aria-hidden="true" className="shrink-0 text-gray-500" size={18} />}
             <div className="min-w-0 flex-1">
-              <span className="wrap-break-word font-medium">{product.name}</span>
+              {PRODUCT_NAME_EDITING_ENABLED ? (
+                <div className="flex gap-1">
+                  <input
+                    aria-label={`Nom de ${product.name}`}
+                    className="min-w-0 flex-1 rounded border border-gray-300 bg-white px-2 py-1 font-medium text-gray-900"
+                    disabled={pendingProductId !== null}
+                    maxLength={150}
+                    onChange={(event) => setNameEdits((current) => ({ ...current, [product.id]: event.target.value }))}
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter") {
+                        event.preventDefault()
+                        void saveName(product).catch(() => undefined)
+                      }
+                    }}
+                    value={nameEdits[product.id] ?? product.name}
+                  />
+                  <button
+                    aria-label={`Enregistrer le nom de ${product.name}`}
+                    className="inline-flex cursor-pointer items-center rounded border border-secondary bg-white px-2 text-secondary hover:bg-secondary/10 disabled:cursor-not-allowed disabled:opacity-50"
+                    disabled={pendingProductId !== null || (nameEdits[product.id] ?? product.name).trim() === product.name}
+                    onClick={() => void saveName(product).catch(() => undefined)}
+                    type="button"
+                  >
+                    <Save size={14} />
+                  </button>
+                </div>
+              ) : (
+                <p className="truncate font-medium text-gray-900" title={product.name}>{product.name}</p>
+              )}
               <div className="mt-2 flex gap-1">
                 <input
                   aria-label={`Code article de ${product.name}`}
