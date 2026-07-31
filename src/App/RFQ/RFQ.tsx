@@ -243,6 +243,9 @@ const RFQ = () => {
             <div className="flex items-start justify-between gap-4">
               <div>
                 <h3 className="text-xl font-bold text-secondary" id="rfq-dialog-title">{selectedCell.productName}</h3>
+                {selectedCell.productItemCode && (
+                  <p className="text-sm font-medium text-gray-600">({selectedCell.productItemCode})</p>
+                )}
                 <p className="mt-1 text-sm font-bold uppercase text-gray-800">{selectedSupplier.name}</p>
                 <p className="text-sm text-gray-600">{selectedCell.weekLabel} · {selectedCell.locationName}</p>
               </div>

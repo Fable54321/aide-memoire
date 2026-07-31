@@ -5,6 +5,7 @@ export type RfqSupplier = (typeof rfqSuppliers)[number]
 export type SelectedRfqCell = {
   productId: number
   productName: string
+  productItemCode: string | null
   weekStart: string
   weekLabel: string
   locationCode: string

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react"
-import { GripVertical, Plus, PowerOff, RotateCcw, X } from "lucide-react"
+import { GripVertical, Plus, PowerOff, RotateCcw, Save, X } from "lucide-react"
 import { useRfq, type RfqProduct } from "../../Contexts/rfqContext"
 
 type ProductManagementModalProps = {
@@ -9,7 +9,7 @@ type ProductManagementModalProps = {
 }
 
 const ProductManagementModal = ({ clientId, clientName, onClose }: ProductManagementModalProps) => {
-  const { getAllClientProducts, addProduct, reorderProducts, deactivateProduct, activateProduct } = useRfq()
+  const { getAllClientProducts, addProduct, updateProductItemCode, reorderProducts, deactivateProduct, activateProduct } = useRfq()
   const [products, setProducts] = useState<RfqProduct[]>([])
   const [newProductName, setNewProductName] = useState("")
   const [isLoading, setIsLoading] = useState(true)
@@ -84,6 +84,20 @@ const ProductManagementModal = ({ clientId, clientName, onClose }: ProductManage
     }
   }
 
+  const handleUpdateItemCode = async (product: RfqProduct, itemCode: string) => {
+    setPendingProductId(product.id)
+    setError("")
+    try {
+      await updateProductItemCode(clientId, product.id, itemCode)
+      await refreshProducts()
+    } catch (actionError) {
+      setError(actionError instanceof Error ? actionError.message : "Impossible de modifier le code article.")
+      throw actionError
+    } finally {
+      setPendingProductId(null)
+    }
+  }
+
   const handleReorder = async (productIds: number[]) => {
     const productById = new Map(products.map((product) => [product.id, product]))
     const reorderedActiveProducts = productIds
@@ -133,8 +147,8 @@ const ProductManagementModal = ({ clientId, clientName, onClose }: ProductManage
           <p className="py-8 text-center text-sm text-gray-600">Chargement des produits…</p>
         ) : (
           <div className="mt-5 grid gap-5 sm:grid-cols-2">
-            <ProductList title={`Actifs (${activeProducts.length})`} products={activeProducts} pendingProductId={pendingProductId} onReorder={handleReorder} onToggle={handleToggleProduct} />
-            <ProductList inactive title={`Désactivés (${inactiveProducts.length})`} products={inactiveProducts} pendingProductId={pendingProductId} onToggle={handleToggleProduct} />
+            <ProductList title={`Actifs (${activeProducts.length})`} products={activeProducts} pendingProductId={pendingProductId} onReorder={handleReorder} onToggle={handleToggleProduct} onUpdateItemCode={handleUpdateItemCode} />
+            <ProductList inactive title={`Désactivés (${inactiveProducts.length})`} products={inactiveProducts} pendingProductId={pendingProductId} onToggle={handleToggleProduct} onUpdateItemCode={handleUpdateItemCode} />
           </div>
         )}
       </div>
@@ -149,11 +163,22 @@ type ProductListProps = {
   pendingProductId: number | null
   onReorder?: (productIds: number[]) => Promise<void>
   onToggle: (product: RfqProduct) => Promise<void>
+  onUpdateItemCode: (product: RfqProduct, itemCode: string) => Promise<void>
 }
 
-const ProductList = ({ title, products, inactive = false, pendingProductId, onReorder, onToggle }: ProductListProps) => {
+const ProductList = ({ title, products, inactive = false, pendingProductId, onReorder, onToggle, onUpdateItemCode }: ProductListProps) => {
   const [draggedProductId, setDraggedProductId] = useState<number | null>(null)
   const [dropProductId, setDropProductId] = useState<number | null>(null)
+  const [itemCodeEdits, setItemCodeEdits] = useState<Record<number, string>>({})
+
+  const saveItemCode = async (product: RfqProduct) => {
+    await onUpdateItemCode(product, itemCodeEdits[product.id] ?? product.item_code ?? "")
+    setItemCodeEdits((current) => {
+      const next = { ...current }
+      delete next[product.id]
+      return next
+    })
+  }
 
   const dropProduct = (targetProductId: number) => {
     if (draggedProductId === null || draggedProductId === targetProductId || !onReorder) {
@@ -212,7 +237,35 @@ const ProductList = ({ title, products, inactive = false, pendingProductId, onRe
             }}
           >
             {!inactive && <GripVertical aria-hidden="true" className="shrink-0 text-gray-500" size={18} />}
-            <span className="min-w-0 wrap-break-word font-medium">{product.name}</span>
+            <div className="min-w-0 flex-1">
+              <span className="wrap-break-word font-medium">{product.name}</span>
+              <div className="mt-2 flex gap-1">
+                <input
+                  aria-label={`Code article de ${product.name}`}
+                  className="min-w-0 flex-1 rounded border border-gray-300 bg-white px-2 py-1 text-sm text-gray-900"
+                  disabled={pendingProductId !== null}
+                  maxLength={100}
+                  onChange={(event) => setItemCodeEdits((current) => ({ ...current, [product.id]: event.target.value }))}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter") {
+                      event.preventDefault()
+                      void saveItemCode(product).catch(() => undefined)
+                    }
+                  }}
+                  placeholder="Code article"
+                  value={itemCodeEdits[product.id] ?? product.item_code ?? ""}
+                />
+                <button
+                  aria-label={`Enregistrer le code article de ${product.name}`}
+                  className="inline-flex cursor-pointer items-center rounded border border-secondary bg-white px-2 text-secondary hover:bg-secondary/10 disabled:cursor-not-allowed disabled:opacity-50"
+                  disabled={pendingProductId !== null || (itemCodeEdits[product.id] ?? product.item_code ?? "").trim() === (product.item_code ?? "")}
+                  onClick={() => void saveItemCode(product).catch(() => undefined)}
+                  type="button"
+                >
+                  <Save size={14} />
+                </button>
+              </div>
+            </div>
             <button className={`inline-flex shrink-0 cursor-pointer items-center gap-1 rounded px-2 py-1 text-xs font-bold disabled:cursor-not-allowed disabled:opacity-50 ${inactive ? "border border-secondary bg-white text-secondary hover:bg-secondary/10" : "border border-red-300 bg-white text-red-700 hover:bg-red-50"}`} disabled={pendingProductId !== null} onClick={() => void onToggle(product)} type="button">
               {inactive ? <><RotateCcw size={14} /> Réactiver</> : <><PowerOff size={14} /> Désactiver</>}
             </button>

@@ -238,7 +238,9 @@ const CalendarTable = ({
       <tbody>
         {products.map((product) => (
           <tr key={product.id}>
-            <th className={`sticky left-0 z-10 h-6 w-56 min-w-56 border border-black bg-white px-2 text-left font-normal lg:h-8 lg:w-64 lg:min-w-64 lg:px-3 ${isSobeys ? "text-fuchsia-800" : ""}`} scope="row">{product.name}</th>
+            <th className={`sticky left-0 z-10 h-6 w-56 min-w-56 border border-black bg-white px-2 text-left font-normal lg:h-8 lg:w-64 lg:min-w-64 lg:px-3 ${isSobeys ? "text-fuchsia-800" : ""}`} scope="row">
+              {product.name}{product.item_code && <span className="text-black"> ({product.item_code})</span>}
+            </th>
             {weeks.flatMap((week, weekIndex) => locations.map((location, locationIndex) => {
               const savedCell = savedCells.find((cell) => cell.product_id === product.id && cell.week_start === week.start && cell.location_code === location.code)
               const displayedPrice = savedCell?.prices[0]?.price
@@ -329,7 +331,7 @@ const CalendarTable = ({
                         })
                         return
                       }
-                      onOpenCell({ productId: product.id, productName: product.name, weekStart: week.start, weekLabel: week.label, locationCode: location.code, locationName: location.name })
+                      onOpenCell({ productId: product.id, productName: product.name, productItemCode: product.item_code, weekStart: week.start, weekLabel: week.label, locationCode: location.code, locationName: location.name })
                     }}
                     onDragEnd={finishDrag}
                     onDragStart={(event) => {

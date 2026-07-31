@@ -13,6 +13,7 @@ export type RfqProduct = {
   id: number
   client_id: number
   name: string
+  item_code: string | null
   display_order: number
   is_active: boolean
 }
@@ -49,6 +50,7 @@ type RfqContextType = {
   loadClientProducts: (clientId: number) => Promise<void>
   getAllClientProducts: (clientId: number) => Promise<RfqProduct[]>
   addProduct: (clientId: number, name: string) => Promise<void>
+  updateProductItemCode: (clientId: number, productId: number, itemCode: string) => Promise<void>
   reorderProducts: (clientId: number, productIds: number[]) => Promise<void>
   deactivateProduct: (clientId: number, productId: number) => Promise<void>
   activateProduct: (clientId: number, productId: number) => Promise<void>
@@ -102,6 +104,14 @@ export const RfqProvider = ({ children }: { children: ReactNode }) => {
     )
     return response.products
   }, [])
+
+  const updateProductItemCode: RfqContextType["updateProductItemCode"] = useCallback(async (clientId, productId, itemCode) => {
+    await fetchWithAuth(`/sales/clients/${clientId}/products/${productId}`, {
+      method: "PATCH",
+      body: { item_code: itemCode.trim() || null },
+    })
+    await loadClientProducts(clientId)
+  }, [loadClientProducts])
 
   const reorderProducts: RfqContextType["reorderProducts"] = useCallback(async (clientId, productIds) => {
     await fetchWithAuth(`/sales/clients/${clientId}/products/reorder`, {
@@ -205,7 +215,7 @@ export const RfqProvider = ({ children }: { children: ReactNode }) => {
 
   return (
     <RfqContext.Provider
-      value={{ productsByClient, loadingByClient, errorsByClient, loadClientProducts, getAllClientProducts, addProduct, reorderProducts, deactivateProduct, activateProduct, cellsByClient, loadClientCells, saveCell, moveCell, moveCells, deleteCell, getAttachmentUrl, openAttachment, openOutlookLink }}
+      value={{ productsByClient, loadingByClient, errorsByClient, loadClientProducts, getAllClientProducts, addProduct, updateProductItemCode, reorderProducts, deactivateProduct, activateProduct, cellsByClient, loadClientCells, saveCell, moveCell, moveCells, deleteCell, getAttachmentUrl, openAttachment, openOutlookLink }}
     >
       {children}
     </RfqContext.Provider>
