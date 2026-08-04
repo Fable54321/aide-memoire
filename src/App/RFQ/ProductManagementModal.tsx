@@ -1,9 +1,6 @@
 import { useEffect, useState } from "react"
-import { GripVertical, Plus, PowerOff, RotateCcw, Save, X } from "lucide-react"
+import { GripVertical, Pencil, Plus, PowerOff, RotateCcw, Save, X } from "lucide-react"
 import { useRfq, type RfqProduct } from "../../Contexts/rfqContext"
-
-// Temporary feature switch: set to true to restore product-name editing.
-const PRODUCT_NAME_EDITING_ENABLED = false
 
 type ProductManagementModalProps = {
   clientId: number
@@ -199,6 +196,7 @@ const ProductList = ({ title, products, inactive = false, pendingProductId, onRe
   const [dropProductId, setDropProductId] = useState<number | null>(null)
   const [itemCodeEdits, setItemCodeEdits] = useState<Record<number, string>>({})
   const [nameEdits, setNameEdits] = useState<Record<number, string>>({})
+  const [editingProductId, setEditingProductId] = useState<number | null>(null)
 
   const saveName = async (product: RfqProduct) => {
     const wasUpdated = await onUpdateName(product, nameEdits[product.id] ?? product.name)
@@ -208,6 +206,16 @@ const ProductList = ({ title, products, inactive = false, pendingProductId, onRe
       delete next[product.id]
       return next
     })
+    setEditingProductId(null)
+  }
+
+  const cancelNameEdit = (productId: number) => {
+    setNameEdits((current) => {
+      const next = { ...current }
+      delete next[productId]
+      return next
+    })
+    setEditingProductId(null)
   }
 
   const saveItemCode = async (product: RfqProduct) => {
@@ -277,35 +285,21 @@ const ProductList = ({ title, products, inactive = false, pendingProductId, onRe
           >
             {!inactive && <GripVertical aria-hidden="true" className="shrink-0 text-gray-500" size={18} />}
             <div className="min-w-0 flex-1">
-              {PRODUCT_NAME_EDITING_ENABLED ? (
-                <div className="flex gap-1">
-                  <input
-                    aria-label={`Nom de ${product.name}`}
-                    className="min-w-0 flex-1 rounded border border-gray-300 bg-white px-2 py-1 font-medium text-gray-900"
-                    disabled={pendingProductId !== null}
-                    maxLength={150}
-                    onChange={(event) => setNameEdits((current) => ({ ...current, [product.id]: event.target.value }))}
-                    onKeyDown={(event) => {
-                      if (event.key === "Enter") {
-                        event.preventDefault()
-                        void saveName(product).catch(() => undefined)
-                      }
-                    }}
-                    value={nameEdits[product.id] ?? product.name}
-                  />
-                  <button
-                    aria-label={`Enregistrer le nom de ${product.name}`}
-                    className="inline-flex cursor-pointer items-center rounded border border-secondary bg-white px-2 text-secondary hover:bg-secondary/10 disabled:cursor-not-allowed disabled:opacity-50"
-                    disabled={pendingProductId !== null || (nameEdits[product.id] ?? product.name).trim() === product.name}
-                    onClick={() => void saveName(product).catch(() => undefined)}
-                    type="button"
-                  >
-                    <Save size={14} />
-                  </button>
-                </div>
-              ) : (
-                <p className="truncate font-medium text-gray-900" title={product.name}>{product.name}</p>
-              )}
+              <div className="flex items-center gap-1">
+                <p className="min-w-0 flex-1 break-words font-medium leading-snug text-gray-900">{product.name}</p>
+                <button
+                  aria-label={`Modifier le nom de ${product.name}`}
+                  className="inline-flex shrink-0 cursor-pointer items-center rounded p-1 text-secondary hover:bg-secondary/10 disabled:cursor-not-allowed disabled:opacity-50"
+                  disabled={pendingProductId !== null}
+                  onClick={() => {
+                    setNameEdits((current) => ({ ...current, [product.id]: product.name }))
+                    setEditingProductId(product.id)
+                  }}
+                  type="button"
+                >
+                  <Pencil size={14} />
+                </button>
+              </div>
               <div className="mt-2 flex gap-1">
                 <input
                   aria-label={`Code article de ${product.name}`}
@@ -333,6 +327,49 @@ const ProductList = ({ title, products, inactive = false, pendingProductId, onRe
                 </button>
               </div>
             </div>
+            {editingProductId === product.id && (
+              <div className="fixed inset-0 z-60 flex cursor-default items-center justify-center bg-black/45 p-4" onMouseDown={(event) => {
+                event.stopPropagation()
+                if (event.target === event.currentTarget) cancelNameEdit(product.id)
+              }} role="presentation">
+                <form
+                  aria-label={`Modifier le nom de ${product.name}`}
+                  className={`w-full max-w-xl rounded-xl border p-5 shadow-2xl ${inactive ? "border-gray-300 bg-gray-50" : "border-green-300 bg-green-50"}`}
+                  onSubmit={(event) => {
+                    event.preventDefault()
+                    void saveName(product).catch(() => undefined)
+                  }}
+                >
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="min-w-0">
+                      <p className="text-xs font-bold uppercase tracking-wide text-gray-500">Modifier le produit</p>
+                      <p className="mt-1 break-words text-sm text-gray-600">{product.name}</p>
+                    </div>
+                    <button aria-label="Annuler" className="shrink-0 cursor-pointer rounded p-1 text-gray-600 hover:bg-black/5" onClick={() => cancelNameEdit(product.id)} type="button"><X size={20} /></button>
+                  </div>
+                  <label className="mt-4 block text-sm font-bold text-gray-800" htmlFor={`product-name-${product.id}`}>Nom du produit</label>
+                  <input
+                    autoFocus
+                    className="mt-1 w-full rounded border border-gray-300 bg-white px-3 py-2 text-base font-medium text-gray-900"
+                    disabled={pendingProductId !== null}
+                    id={`product-name-${product.id}`}
+                    maxLength={150}
+                    onChange={(event) => setNameEdits((current) => ({ ...current, [product.id]: event.target.value }))}
+                    onKeyDown={(event) => {
+                      if (event.key === "Escape") {
+                        event.stopPropagation()
+                        cancelNameEdit(product.id)
+                      }
+                    }}
+                    value={nameEdits[product.id] ?? product.name}
+                  />
+                  <div className="mt-5 flex justify-end gap-2">
+                    <button className="cursor-pointer rounded border border-gray-300 bg-white px-4 py-2 font-bold text-gray-700 hover:bg-gray-100" onClick={() => cancelNameEdit(product.id)} type="button">Annuler</button>
+                    <button className="inline-flex cursor-pointer items-center gap-2 rounded bg-secondary px-4 py-2 font-bold text-white disabled:cursor-not-allowed disabled:opacity-50" disabled={pendingProductId !== null || (nameEdits[product.id] ?? product.name).trim() === product.name} type="submit"><Save size={16} /> Enregistrer</button>
+                  </div>
+                </form>
+              </div>
+            )}
             <button className={`inline-flex shrink-0 cursor-pointer items-center gap-1 rounded px-2 py-1 text-xs font-bold disabled:cursor-not-allowed disabled:opacity-50 ${inactive ? "border border-secondary bg-white text-secondary hover:bg-secondary/10" : "border border-red-300 bg-white text-red-700 hover:bg-red-50"}`} disabled={pendingProductId !== null} onClick={() => void onToggle(product)} type="button">
               {inactive ? <><RotateCcw size={14} /> Réactiver</> : <><PowerOff size={14} /> Désactiver</>}
             </button>
