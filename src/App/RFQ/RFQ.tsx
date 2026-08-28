@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState, type ClipboardEvent } from "react"
 import { ArrowLeft, ArrowRight, ExternalLink, FileText, Mail, Settings, Trash2, X } from "lucide-react"
 import { rfqSuppliers } from "../ClientsAndVegetables/suppliers"
-import { useRfq } from "../../Contexts/rfqContext"
+import { useRfq, type PendingRfqFile } from "../../Contexts/rfqContext"
 import {
   getRfqClientConfig,
   type RfqSupplier,
@@ -33,7 +33,7 @@ const RFQ = () => {
   const [priceRows, setPriceRows] = useState(["20"])
   const [isEditingPrice, setIsEditingPrice] = useState(true)
   const [cellStatus, setCellStatus] = useState<"final" | "email">("email")
-  const [files, setFiles] = useState<File[]>([])
+  const [files, setFiles] = useState<PendingRfqFile[]>([])
   const [selectedOutlookMessages, setSelectedOutlookMessages] = useState<OutlookMessage[]>([])
   const [isSaving, setIsSaving] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
@@ -60,13 +60,13 @@ const RFQ = () => {
   const addFiles = (incomingFiles: File[]) => {
     setFiles((currentFiles) => {
       const knownFiles = new Set(
-        currentFiles.map((file) => `${file.name}:${file.size}:${file.lastModified}`),
+        currentFiles.map(({ file }) => `${file.name}:${file.size}:${file.lastModified}`),
       )
       return [
         ...currentFiles,
         ...incomingFiles.filter(
           (file) => !knownFiles.has(`${file.name}:${file.size}:${file.lastModified}`),
-        ),
+        ).map((file) => ({ file, regionCode: selectedCell?.locationCode ?? "B" })),
       ]
     })
   }
@@ -226,7 +226,7 @@ const RFQ = () => {
           </div>
         </div>
 
-        <Calendar onOpenCell={openCell} selectedSupplier={selectedSupplier} />
+        <Calendar key={selectedSupplier.id} onOpenCell={openCell} selectedSupplier={selectedSupplier} />
       </div>
 
       {isManagingProducts && (
@@ -351,10 +351,15 @@ const RFQ = () => {
                 files={files}
                 getDisplayName={getAttachmentDisplayName}
                 onAddFiles={addFiles}
+                onRegionChange={(index, regionCode) => setFiles((currentFiles) => currentFiles.map((item, fileIndex) => fileIndex === index ? { ...item, regionCode } : item))}
                 onRemoveFile={(index) => setFiles((currentFiles) => currentFiles.filter((_, fileIndex) => fileIndex !== index))}
+                showSobeysRegion={selectedSupplier.id === 5 && selectedCell.locationCode === "B"}
               />
-              {(activeSavedCell?.attachments.length ?? 0) > 0 && <div className="mt-3 space-y-1">{activeSavedCell?.attachments.map((attachment) => (
-                <button className="flex cursor-pointer items-center gap-2 text-left text-sm text-secondary underline" key={attachment.id} onClick={() => attachment.content_type.startsWith("image/") ? setPreviewAttachment({ id: attachment.id, fileName: getAttachmentDisplayName(attachment.file_name, attachment.content_type) }) : void openAttachment(attachment.id)} type="button"><FileText size={16} />{getAttachmentDisplayName(attachment.file_name, attachment.content_type)}</button>
+              {(activeSavedCell?.attachments.length ?? 0) > 0 && <div className="mt-3 space-y-1">{[...(activeSavedCell?.attachments ?? [])].sort((first, second) => {
+                const regionOrder = (first.region_code ?? "").localeCompare(second.region_code ?? "", "fr")
+                return regionOrder || first.file_name.localeCompare(second.file_name, "fr")
+              }).map((attachment) => (
+                <button className="flex cursor-pointer items-center gap-2 text-left text-sm text-secondary underline" key={attachment.id} onClick={() => attachment.content_type.startsWith("image/") ? setPreviewAttachment({ id: attachment.id, fileName: getAttachmentDisplayName(attachment.file_name, attachment.content_type) }) : void openAttachment(attachment.id)} type="button"><FileText size={16} />{getAttachmentDisplayName(attachment.file_name, attachment.content_type)}{selectedSupplier.id === 5 && selectedCell.locationCode === "B" && attachment.region_code && ` (${attachment.region_code === "Q" ? "Québec" : "Boucherville"})`}</button>
               ))}</div>}
             </div>
 

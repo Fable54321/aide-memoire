@@ -18,6 +18,11 @@ export type RfqProduct = {
   is_active: boolean
 }
 
+export type PendingRfqFile = {
+  file: File
+  regionCode: string
+}
+
 export type RfqCell = {
   id: number
   client_id: number
@@ -26,7 +31,7 @@ export type RfqCell = {
   location_code: string
   status: "final" | "email"
   prices: Array<{ id: number; quantity: number | string; price: number | string }>
-  attachments: Array<{ id: number; file_name: string; content_type: string }>
+  attachments: Array<{ id: number; file_name: string; content_type: string; region_code: string | null }>
   email_links: Array<{
     id: number
     user_id: number
@@ -57,7 +62,7 @@ type RfqContextType = {
   activateProduct: (clientId: number, productId: number) => Promise<void>
   cellsByClient: Record<number, RfqCell[]>
   loadClientCells: (clientId: number) => Promise<void>
-  saveCell: (data: { clientId: number; productId: number; weekStart: string; locationCode: string; status: "final" | "email"; prices: Array<{ quantity: number; price: number }>; files: File[]; outlookMessageIds: string[] }) => Promise<void>
+  saveCell: (data: { clientId: number; productId: number; weekStart: string; locationCode: string; status: "final" | "email"; prices: Array<{ quantity: number; price: number }>; files: PendingRfqFile[]; outlookMessageIds: string[] }) => Promise<void>
   moveCell: (data: { cellId: number; clientId: number; productId: number; weekStart: string; locationCode: string }) => Promise<void>
   deleteCell: (cellId: number, clientId: number) => Promise<void>
   getAttachmentUrl: (attachmentId: number) => Promise<string>
@@ -157,7 +162,8 @@ export const RfqProvider = ({ children }: { children: ReactNode }) => {
     body.append("status", data.status)
     body.append("prices", JSON.stringify(data.prices))
     body.append("outlookMessageIds", JSON.stringify(data.outlookMessageIds))
-    data.files.forEach((file) => body.append("files", file))
+    body.append("fileRegions", JSON.stringify(data.files.map(({ regionCode }) => regionCode)))
+    data.files.forEach(({ file }) => body.append("files", file))
     await fetchWithAuth("/sales/rfq-cells", { method: "PUT", body })
     await loadClientCells(data.clientId)
   }, [loadClientCells])

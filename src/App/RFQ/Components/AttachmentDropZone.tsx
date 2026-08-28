@@ -1,6 +1,7 @@
 import { useState, type DragEvent } from "react"
 import { Mail, Upload } from "lucide-react"
 import PendingAttachmentPreview from "../PendingAttachmentPreview"
+import type { PendingRfqFile } from "../../../Contexts/rfqContext"
 
 const supportedExtensions = [
   ".eml",
@@ -21,9 +22,11 @@ const isSupportedFile = (file: File) => {
 }
 
 type AttachmentDropZoneProps = {
-  files: File[]
+  files: PendingRfqFile[]
   onAddFiles: (files: File[]) => void
   onRemoveFile: (index: number) => void
+  onRegionChange: (index: number, regionCode: string) => void
+  showSobeysRegion: boolean
   getDisplayName: (fileName: string, contentType: string) => string
 }
 
@@ -31,6 +34,8 @@ const AttachmentDropZone = ({
   files,
   onAddFiles,
   onRemoveFile,
+  onRegionChange,
+  showSobeysRegion,
   getDisplayName,
 }: AttachmentDropZoneProps) => {
   const [isDragging, setIsDragging] = useState(false)
@@ -115,13 +120,27 @@ const AttachmentDropZone = ({
           <p className="text-sm">
             {files.length} fichier{files.length > 1 ? "s" : ""} sélectionné{files.length > 1 ? "s" : ""} :
           </p>
-          {files.map((file, index) => (
-            <PendingAttachmentPreview
-              displayName={getDisplayName(file.name, file.type)}
-              file={file}
-              key={`${file.name}-${file.lastModified}-${index}`}
-              onRemove={() => onRemoveFile(index)}
-            />
+          {files.map(({ file, regionCode }, index) => (
+            <div className="rounded-lg border border-gray-200 p-2" key={`${file.name}-${file.lastModified}-${index}`}>
+              <PendingAttachmentPreview
+                displayName={getDisplayName(file.name, file.type)}
+                file={file}
+                onRemove={() => onRemoveFile(index)}
+              />
+              {showSobeysRegion && (
+                <label className="mt-2 flex items-center gap-2 text-sm font-bold">
+                  Région :
+                  <select
+                    className="rounded border border-gray-300 bg-white px-2 py-1 font-normal"
+                    onChange={(event) => onRegionChange(index, event.target.value)}
+                    value={regionCode}
+                  >
+                    <option value="B">Boucherville</option>
+                    <option value="Q">Québec</option>
+                  </select>
+                </label>
+              )}
+            </div>
           ))}
         </div>
       )}

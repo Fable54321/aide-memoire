@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react"
-import { Paperclip } from "lucide-react"
+import { ChevronLeft, ChevronRight, Paperclip } from "lucide-react"
 import { useRfq, type RfqCell, type RfqProduct } from "../../../Contexts/rfqContext"
 import {
   getRfqClientConfig,
@@ -14,6 +14,7 @@ type CalendarProps = {
 
 type Location = {
   code: string
+  displayCode?: string
   name: string
   details?: readonly string[]
 }
@@ -30,8 +31,7 @@ const locationsByClient: Record<"loblaws" | "metro" | "sobeys", readonly Locatio
     { code: "T", name: "Toronto (ZP 03)" },
   ],
   sobeys: [
-    { code: "B", name: "Boucherville" },
-    { code: "Q", name: "Québec" },
+    { code: "B", displayCode: "B/Q", name: "Boucherville / Québec" },
     { code: "O", name: "Ontario", details: ["Debert", "Witby"] },
     { code: "W", name: "Ouest canadien", details: ["Campbell", "Winnipeg", "Calgary", "Edmonton"] },
     { code: "A", name: "Atlantique", details: ["Mt-Pearl"] },
@@ -132,7 +132,7 @@ const CalendarTable = ({
         <tr>
           {weeks.flatMap((week, weekIndex) => locations.map((location, locationIndex) => (
             <th className={`h-6 min-w-8.75 border-y-2 border-black text-center font-extrabold lg:h-8 ${locationIndex === 0 ? "border-l-2" : "border-l border-l-black/60"} ${locationIndex === locations.length - 1 ? "border-r-2" : ""} ${weekIndex % 2 === 0 ? alternateWeekColor : "bg-white"}`} key={`${week.number}-${weekIndex}-${location.code}`} scope="col" title={location.name}>
-              {location.code}
+              {location.displayCode ?? location.code}
             </th>
           )))}
         </tr>
@@ -246,14 +246,15 @@ const CalendarTable = ({
 }
 
 const Calendar = ({ selectedSupplier, onOpenCell }: CalendarProps) => {
+  const [weekOffset, setWeekOffset] = useState(0)
   const { productsByClient, loadingByClient, errorsByClient, loadClientProducts, cellsByClient, moveCell } = useRfq()
   const products = productsByClient[selectedSupplier.id] ?? []
   const savedCells = cellsByClient[selectedSupplier.id] ?? []
   const { clientKey, isMetro, isSobeys } = getRfqClientConfig(selectedSupplier.id)
   const locations = locationsByClient[clientKey]
   const alternateWeekColor = isMetro ? "bg-orange-100" : isSobeys ? "bg-fuchsia-100" : "bg-green-100"
-  const weeks = useMemo(() => Array.from({ length: isMetro ? 13 : isSobeys ? 6 : 8 }, (_, index) => {
-    const start = addDays(isSobeys ? getSunday(new Date()) : getMonday(new Date()), index * 7)
+  const weeks = useMemo(() => Array.from({ length: isMetro ? 13 : isSobeys ? 7 : 8 }, (_, index) => {
+    const start = addDays(isSobeys ? getSunday(new Date()) : getMonday(new Date()), (index + weekOffset) * 7)
     const end = addDays(start, 6)
     return {
       start: formatDateKey(start),
@@ -263,7 +264,7 @@ const Calendar = ({ selectedSupplier, onOpenCell }: CalendarProps) => {
       title: isSobeys ? `SF ${addDays(end, 4).getDate()} ${monthNames[addDays(end, 4).getMonth()]}` : isMetro ? null : `SE ${getIsoWeek(start)}`,
       label: formatWeekRange(start, end),
     }
-  }), [isMetro, isSobeys])
+  }), [isMetro, isSobeys, weekOffset])
 
   if (loadingByClient[selectedSupplier.id]) return <p className="py-8 text-center text-sm text-gray-600">Chargement des produits...</p>
   const error = errorsByClient[selectedSupplier.id]
@@ -272,9 +273,38 @@ const Calendar = ({ selectedSupplier, onOpenCell }: CalendarProps) => {
 
   return (
     <>
+      <div className="mb-3 flex flex-wrap items-center justify-center gap-3" aria-label="Navigation entre les semaines">
+        <button
+          aria-label="Afficher les semaines précédentes"
+          className="inline-flex cursor-pointer items-center gap-1 rounded border border-secondary px-3 py-1.5 text-sm font-bold text-secondary transition hover:bg-secondary/10"
+          onClick={() => setWeekOffset((current) => current - 1)}
+          type="button"
+        >
+          <ChevronLeft aria-hidden="true" size={18} />
+          Précédentes
+        </button>
+        {weekOffset < 0 && (
+          <p
+            className="rounded-full border border-[#b79fad] bg-[#fae8ff] px-3 py-1.5 text-md font-bold text-black"
+            role="status"
+          >
+            Vue passée — {Math.abs(weekOffset)} semaine{weekOffset < -1 ? "s" : ""} en arrière
+          </p>
+        )}
+        <button
+          aria-label="Afficher les semaines suivantes"
+          className="inline-flex items-center gap-1 rounded border border-secondary px-3 py-1.5 text-sm font-bold text-secondary transition hover:bg-secondary/10 disabled:cursor-not-allowed disabled:border-gray-300 disabled:text-gray-400 disabled:hover:bg-transparent"
+          disabled={weekOffset === 0}
+          onClick={() => setWeekOffset((current) => Math.min(0, current + 1))}
+          type="button"
+        >
+          Suivantes
+          <ChevronRight aria-hidden="true" size={18} />
+        </button>
+      </div>
       <CalendarTable alternateWeekColor={alternateWeekColor} clientId={selectedSupplier.id} isMetro={isMetro} isSobeys={isSobeys} locations={locations} moveCell={moveCell} onOpenCell={onOpenCell} products={products} savedCells={savedCells} weeks={weeks} />
       <div className={`mt-4 grid gap-x-6 gap-y-2 text-xs sm:grid-cols-2 ${locations.length >= 5 ? "lg:grid-cols-5" : "lg:grid-cols-4"}`}>
-        {locations.map((location) => <div key={location.code}><p><strong>{location.code}</strong> = {location.name}</p>{location.details?.map((detail) => <p className="pl-4" key={detail}>{detail}</p>)}</div>)}
+        {locations.map((location) => <div key={location.code}><p><strong>{location.displayCode ?? location.code}</strong> = {location.name}</p>{location.details?.map((detail) => <p className="pl-4" key={detail}>{detail}</p>)}</div>)}
       </div>
     </>
   )
